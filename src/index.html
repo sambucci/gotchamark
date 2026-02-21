@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gotcha!Mark</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ── Sidebar ── -->
+  <nav id="sidebar">
+    <div id="logo">
+      <span class="logo-gotcha">Gotcha!</span><span class="logo-mark">Mark</span>
+    </div>
+    <button class="nav-btn active" data-view="watermark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="8" y1="13" x2="16" y2="13"/>
+        <line x1="8" y1="17" x2="12" y2="17"/>
+      </svg>
+      Watermark
+    </button>
+    <button class="nav-btn" data-view="history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+      History
+    </button>
+
+    <div id="sidebar-footer">
+      <div id="sidebar-appname"><span class="logo-gotcha">Gotcha!</span><span class="logo-mark-sm">Mark</span></div>
+      <div id="sidebar-version">v0.1.0</div>
+      <div id="sidebar-copy">&copy; Layer Focused</div>
+      <div id="sidebar-url">gotchamark.net</div>
+      <button id="btn-license" class="sidebar-link-btn">License</button>
+    </div>
+  </nav>
+
+  <!-- ── License modal ── -->
+  <div id="license-modal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">License</span>
+        <button id="btn-license-close" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <pre id="license-text">
+[License placeholder — to be determined]
+
+Gotcha!Mark is open source software.
+License text will be added here in a future release.
+        </pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main content ── -->
+  <main id="main">
+
+    <!-- ════ WATERMARK VIEW ════ -->
+    <section id="view-watermark" class="view active">
+      <div id="wm-layout">
+
+        <!-- Left panel: form -->
+        <div id="wm-form-panel">
+          <h2>New watermark</h2>
+
+          <!-- Drop zone -->
+          <div class="form-group">
+            <label>PDF file</label>
+            <div id="drop-zone">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="drop-icon">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <span id="drop-label">Drop a PDF here, or <button id="btn-browse" class="link-btn">browse</button></span>
+              <span id="drop-filename" class="hidden file-name"></span>
+            </div>
+            <!-- Hidden file input -->
+            <input type="file" id="file-input" accept=".pdf" class="hidden" />
+          </div>
+
+          <!-- Fields (shown after PDF loaded) -->
+          <div id="wm-fields" class="hidden">
+
+            <div class="form-section-title">
+              Watermark info
+              <span class="badge-optional">all optional</span>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="f-recipient">Recipient</label>
+                <input type="text" id="f-recipient" placeholder="Acme Corp" maxlength="60" />
+              </div>
+              <div class="form-group narrow">
+                <label for="f-date">Date</label>
+                <input type="date" id="f-date" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="f-custom">Custom text</label>
+              <input type="text" id="f-custom" placeholder="Add optional custom text here" maxlength="80" />
+            </div>
+
+            <div class="form-section-title">
+              Mark ID
+              <span class="badge-optional">all optional</span>
+            </div>
+            <p class="field-hint">A unique ID is always auto-generated. You can clear it entirely if you prefer no ID, or edit it freely.</p>
+            <div class="form-row">
+              <div class="form-group narrow">
+                <label for="f-prefix">Prefix</label>
+                <input type="text" id="f-prefix" placeholder="e.g. ACME" maxlength="12" />
+              </div>
+              <div class="form-group">
+                <label for="f-mark-id">Mark ID</label>
+                <input type="text" id="f-mark-id" class="mono-input" maxlength="40" />
+              </div>
+            </div>
+
+            <div class="form-section-title">Appearance</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="f-color">Text color</label>
+                <div class="color-input-wrap">
+                  <input type="color" id="f-color" value="#1a1a1a" />
+                  <input type="text" id="f-color-hex" value="#1a1a1a" maxlength="7" class="hex-text" />
+                </div>
+                <div id="contrast-warning" class="warning hidden"></div>
+              </div>
+              <div class="form-group narrow">
+                <label for="f-size">Font size (pt)</label>
+                <input type="number" id="f-size" value="7.5" min="4" max="20" step="0.5" />
+              </div>
+            </div>
+
+            <div class="form-section-title">Pages</div>
+            <div class="radio-group">
+              <label><input type="radio" name="pages" value="all" checked /> All pages</label>
+              <label><input type="radio" name="pages" value="first" /> First page only</label>
+            </div>
+
+            <p class="position-hint">
+              Drag the watermark on the PDF preview to reposition it.
+            </p>
+
+            <div id="wm-actions">
+              <button id="btn-apply" class="btn-primary">Apply watermark &amp; save</button>
+            </div>
+
+            <div id="result-banner" class="hidden"></div>
+          </div>
+        </div>
+
+        <!-- Right panel: PDF preview -->
+        <div id="wm-preview-panel">
+          <div id="preview-placeholder">
+            <svg viewBox="0 0 64 80" fill="none" stroke="#d0d0d0" stroke-width="1.5">
+              <rect x="8" y="2" width="48" height="76" rx="4"/>
+              <line x1="18" y1="22" x2="46" y2="22"/>
+              <line x1="18" y1="32" x2="46" y2="32"/>
+              <line x1="18" y1="42" x2="38" y2="42"/>
+              <line x1="18" y1="52" x2="42" y2="52"/>
+            </svg>
+            <p>PDF preview<br/>will appear here</p>
+          </div>
+
+          <div id="preview-container" class="hidden">
+            <div id="preview-page-wrap">
+              <!-- PDF render canvas -->
+              <canvas id="pdf-canvas"></canvas>
+              <!-- Watermark overlay canvas (click target) -->
+              <canvas id="overlay-canvas"></canvas>
+            </div>
+            <div id="preview-nav">
+              <button id="btn-prev-page" class="icon-btn">&#8592;</button>
+              <span id="page-indicator">Page 1 of 1</span>
+              <button id="btn-next-page" class="icon-btn">&#8594;</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ════ HISTORY VIEW ════ -->
+    <section id="view-history" class="view">
+      <div id="history-header">
+        <h2>Watermark history</h2>
+        <div id="history-controls">
+          <input type="text" id="search-box" placeholder="Search by ID, recipient, text…" />
+          <button id="btn-refresh" class="btn-secondary">Refresh</button>
+          <button id="btn-export-json" class="btn-secondary">Export JSON</button>
+          <button id="btn-export-csv" class="btn-secondary">Export CSV</button>
+        </div>
+      </div>
+
+      <div id="history-table-wrap">
+        <table id="history-table" class="hidden">
+          <thead>
+            <tr>
+              <th>Mark ID</th>
+              <th>Recipient</th>
+              <th>Date</th>
+              <th>Custom text</th>
+              <th>Created at</th>
+            </tr>
+          </thead>
+          <tbody id="history-tbody"></tbody>
+        </table>
+        <div id="history-empty">
+          <div class="history-empty-icon">
+            <svg viewBox="0 0 64 64" fill="none" stroke="#d0d0d0" stroke-width="1.5">
+              <rect x="8" y="4" width="36" height="48" rx="3"/>
+              <line x1="16" y1="18" x2="36" y2="18"/>
+              <line x1="16" y1="26" x2="36" y2="26"/>
+              <line x1="16" y1="34" x2="28" y2="34"/>
+              <circle cx="46" cy="46" r="12" stroke="#d0d0d0"/>
+              <line x1="42" y1="46" x2="50" y2="46"/>
+              <line x1="46" y1="42" x2="46" y2="50"/>
+            </svg>
+          </div>
+          <p class="history-empty-title">No watermarks yet</p>
+          <p class="history-empty-sub">Every PDF you watermark will be recorded here, along with who you sent it to. If a copy ever leaks, paste the mark ID into the search box above to find out who got that version.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="main.js" defer></script>
+</body>
+</html>
