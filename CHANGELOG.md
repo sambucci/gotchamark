@@ -1,0 +1,99 @@
+# Changelog
+
+All notable changes to Gotcha!Mark are documented here.
+Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+---
+
+## [Unreleased]
+
+---
+
+## [0.1.2] — 2026-02-22
+
+### Added
+- **XMP metadata embedding** — every watermarked PDF now carries the Mark ID in an XMP stream attached to the document catalog (`gotchamark:MarkID`, namespace `https://gotchamark.net/xmp/1.0/`). XMP survives PDF processing pipelines (Ghostscript, PDF/A converters, print-to-PDF) that rebuild or strip the Info dictionary. ExifTool and raw `grep` can locate marked files in a dump without any GotchaMark-specific tooling.
+- **XMP fallback detection** — `cmd_detect` now checks the XMP stream if the Info dict check finds nothing, so files where the Info dict was stripped are still recognised.
+- **Source file in registry** — `source_name` (filename) and `source_dir` (folder) of the original PDF are now stored in the registry and shown as two new columns in the History view and included in JSON/CSV exports.
+- **Refresh button feedback** — the Refresh button in History now shows "Refreshing…" while the query runs, then "✓ Done" for one second before resetting.
+- **`CONTRIBUTING.md`** — developer documentation covering setup, project structure, the language sync requirement, security model, and commit style.
+- **`README.md`** rewritten — user-facing front page with project pitch, how it works, features, system requirements, security researcher scanning guide (grep, ExifTool, Python + pikepdf), and XMP namespace documentation.
+
+### Changed
+- **`sent_date` renamed to `date`** in the registry schema, Rust structs, JS render, and CSV/JSON export headers. A migration runs automatically on first launch.
+- **History "Date" column** label updated to reflect the rename.
+
+### Fixed
+- **CSV and JSON export failing** — `fs:allow-write-text-file` capability was missing from `capabilities/default.json`; exports now work correctly.
+- **Already-watermarked file silently not loading** — the rejection check now runs before any state is mutated, the error banner is shown outside `#wm-fields` so it is visible even when no file has been previously loaded, and `showView("watermark")` is called explicitly to guarantee the banner is on screen.
+
+### Security
+- **Source path validated in `cmd_detect`** — `validate_pdf_source_path()` is now called in both `cmd_watermark` and `cmd_detect`.
+- **`cmd_save_prefs` input validation** — `font_color` validated as hex `#rrggbb`; `font_size` validated as finite and in range 1–100; `lang` validated against a whitelist (`["en", "it"]`).
+- **`cmd_load_prefs` size guard** — preferences file capped at 8 KB before reading; parse failure falls back to defaults silently.
+- **`loadFromPath` JS pre-validation** — path checked for non-empty, ≤4096 chars, `.pdf` extension, and no `..` before any Tauri call.
+
+---
+
+## [0.1.1] — 2026-02-22
+
+### Added
+- **Internationalisation (i18n)** — full English and Italian translations via `src/i18n.js`. Every UI string goes through `t(key)` with named interpolation placeholders, making adding new languages a single-file task.
+- **Language picker** — globe-icon button in the sidebar opens an inline dropdown. Chosen language is persisted to `prefs.json` and restored on next launch.
+- **Internal note field** — optional free-text field ("won't be shown") stored in the registry and visible in History. Included in search and CSV/JSON exports.
+- **Appearance preferences** — text color and font size are auto-saved to `prefs.json` (debounced 800 ms, flushed on close) and restored on startup.
+- **Date-stamped Mark IDs** — auto-generated IDs now include a 5-char base-36 encoding of today's date (e.g. `GM-CQAHX-FC47CA95`). The date segment is deterministic per calendar day and mathematically unique across days, reducing collision risk significantly.
+- **Registry collision check** — before finalising an auto-generated ID, Rust checks `registry::exists()` and retries with a new random suffix until the ID is confirmed unique.
+- **GPL v3 License** with a professional liability and warranty disclaimer, shown in the in-app License modal. License text is fully translated into Italian (and extensible to other languages via i18n). A `LICENSE` file is included in the project root.
+- **`gotchamark.net` domain** moved from sidebar footer to just below the logo for better brand visibility.
+- **PDF zoom** — zoom in/out buttons in the preview nav bar (25% steps, 50%–400% range). Ctrl+scroll also works. Zoom resets on page change. Double-click the % label to reset to 100%.
+- **Responsive PDF preview** — `ResizeObserver` re-renders the PDF to fill the panel whenever the window is resized or maximised, preserving the current zoom level.
+- **Changelog** (this file).
+
+### Changed
+- **Output filename** defaults to `[originalname]-gotchamark.pdf` (was `-watermarked.pdf`).
+- **Save dialog default directory** is now the source file's own folder (requires opening via Browse; drag-drop falls back to home dir).
+- **File open** switched from `<input type="file">` to `tauriDialog().open()` so the full filesystem path is known, enabling the smart save directory and the solo check.
+- **Contrast warning threshold** lowered from 4.5:1 to 1.8:1 for the warning banner.
+- **Contrast hard floor** at 1.3:1 — colors below this are automatically snapped to black or white.
+- **Minimum font size** enforced at 4 pt; the field reverts live if a lower value is typed.
+- **Watermark row separator** changed from em-dash (`—`) to ` - ` for compatibility with Helvetica/WinAnsiEncoding in PDF streams.
+- **`main.js` converted to ES module** (`type="module"`) to support `import` of `i18n.js`.
+
+### Fixed
+- **"Invalid file header"** error on watermark apply — eliminated the base64 round-trip entirely. Rust now reads the PDF directly from disk via `std::fs::read`.
+- **Contrast warning hidden behind color picker** — moved `#contrast-warning` out of the `.form-row` flex container into a full-width block below it.
+- **History view not showing** — removed accidental `class="hidden"` from `#view-history`; history table starts hidden, empty-state starts visible.
+- **Watermark drag only updating on release** — switched to `mousedown` + `window.mousemove` + `window.mouseup` for live drag updates.
+- **Mark ID field not editable** — replaced read-only preview div with `<input type="text" class="mono-input">`.
+- **CDN Tauri plugin imports failing in webview** — switched to `window.__TAURI__` globals injected by the runtime (`withGlobalTauri: true`).
+- **Full-screen layout overflow** — added `min-height: 0` throughout the flex chain (`#main`, `.view`, `#wm-layout`, `#wm-form-panel`, `#wm-preview-panel`, `#preview-container`) to prevent panels from overflowing the viewport on window maximise.
+- **License text wrapping artefacts** — moved license body out of hard-coded HTML into i18n strings; set via `textContent` so line endings are clean.
+
+### Security
+- **PDF.js bundled locally** — removed CDN dependency (`cdnjs.cloudflare.com`). Both `pdf.min.mjs` and `pdf.worker.min.mjs` are now shipped with the app, eliminating the risk of a CDN compromise or MITM injecting malicious script.
+- **Content Security Policy enforced** — `tauri.conf.json` now sets a strict CSP (`script-src 'self'`), blocking inline script execution and all external script origins.
+- **Input length validation** — Rust backend (`cmd_watermark`) now enforces per-field length limits: recipient (120), date (32), custom text (200), internal note (500), Mark ID (128), color (32). Font size is clamped to 1–100 pt.
+- **Output path validation** — `cmd_watermark` verifies the output path is absolute, ends in `.pdf`, and contains no `..` traversal components before writing.
+- **Search query length cap** — `registry::search()` rejects queries longer than 200 characters, preventing expensive full-table LIKE scans.
+- **Error message sanitisation** — filesystem paths and Rust module names are stripped from error strings before display, preventing internal path disclosure.
+
+---
+
+## [0.1.0] — 2026-02-21
+
+### Added
+- Initial working build: Tauri v2 shell with Rust backend and vanilla JS frontend.
+- PDF watermarking via `lopdf`: three-row visible watermark (recipient/date/custom text, Mark ID, tagline).
+- Visual position picker: drag watermark on a live canvas overlay of the PDF preview.
+- Per-page or all-pages watermarking.
+- Solo enforcement: refuses to watermark a PDF that already carries a `GotchaMark-ID` metadata key.
+- WCAG-based contrast check (Rust): warns if text color lacks sufficient contrast against the sampled background.
+- SQLite registry (`rusqlite` bundled, zero install): every watermark recorded with hash, recipient, date, position, color, size, and timestamp.
+- JSON and CSV export of the full registry.
+- History view with live search across ID, recipient, date, and custom text.
+- Platform-appropriate data directory via `dirs` crate (`%APPDATA%`, `~/.local/share`, `~/Library/Application Support`).
+- SHA-256 hash of source PDF stored for provenance.
+- Prefix field for Mark ID to namespace records by project or client.
+- Dark sidebar with accent-red branding; responsive two-panel layout.
+- License modal (MIT + liability disclaimer — changed to GPL v3 in v0.1.1).
