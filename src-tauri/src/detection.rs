@@ -29,18 +29,27 @@ pub fn detect(pdf_bytes: &[u8]) -> Result<Option<String>> {
     }
 
     // ── 2. XMP metadata stream (catalog Metadata entry) ──────────────────────
+    // stream.content holds raw (possibly compressed) bytes. A PDF processing
+    // pipeline (optimizer, PDF/A converter) may have applied FlateDecode or
+    // another filter. We must decode the stream before parsing it as XML;
+    // otherwise detection silently fails and an already-marked PDF passes as clean.
     if let Ok(catalog_ref) = trailer.get(b"Root").and_then(|o| o.as_reference()) {
-        if let Ok(lopdf::Object::Stream(stream)) = doc
+        if let Ok(metadata_ref) = doc
             .get_object(catalog_ref)
             .and_then(|o| o.as_dict())
             .and_then(|d| d.get(b"Metadata"))
             .and_then(|o| o.as_reference())
-            .and_then(|r| doc.get_object(r))
-            .map(|o| o.clone())
         {
-            if let Ok(xml) = std::str::from_utf8(&stream.content) {
-                if let Some(id) = extract_xmp_mark_id(xml) {
-                    return Ok(Some(id));
+            if let Ok(lopdf::Object::Stream(mut stream)) = doc.get_object(metadata_ref).cloned() {
+                // get_plain_content() applies any stream filters (FlateDecode, etc.)
+                // and returns the decoded bytes. Falls back to raw content if decoding
+                // fails (e.g. unrecognised filter), so detection still attempts UTF-8.
+                let decoded = stream.get_plain_content()
+                    .unwrap_or_else(|_| stream.content.clone());
+                if let Ok(xml) = std::str::from_utf8(&decoded) {
+                    if let Some(id) = extract_xmp_mark_id(xml) {
+                        return Ok(Some(id));
+                    }
                 }
             }
         }
