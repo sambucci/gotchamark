@@ -364,11 +364,19 @@ fn ensure_helvetica_resource(doc: &mut Document, page_id: lopdf::ObjectId) -> Re
         _ => Dictionary::new(),
     };
 
-    let font_dict_clone = resources_dict.get(b"Font")
-        .ok()
-        .and_then(|o| o.as_dict().ok())
-        .cloned()
-        .unwrap_or_default();
+    // Resolve Font entry — it may be a direct dictionary OR an indirect reference.
+    // Falling back to an empty dict when it's an indirect ref would silently wipe
+    // the original page font resources, corrupting the document.
+    let font_dict_clone: lopdf::Dictionary = match resources_dict.get(b"Font").ok().cloned() {
+        Some(Object::Dictionary(d)) => d,
+        Some(Object::Reference(r)) => {
+            doc.get_object(r)
+               .and_then(|o| o.as_dict())
+               .cloned()
+               .unwrap_or_default()
+        }
+        _ => Dictionary::new(),
+    };
 
     let mut font_dict = font_dict_clone;
 
