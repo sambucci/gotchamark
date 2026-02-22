@@ -98,7 +98,7 @@ for path in pathlib.Path("/path/to/dump").rglob("*.pdf"):
         pass
 ```
 
-Once you have a mark ID (e.g. `GM-C28VY-BF13E70C`), open it in Gotcha!Mark's **Detect** tab to decode it, or search for it in the **History** tab if you have access to the registry.
+Once you have a mark ID (e.g. `GM-C28VY-BF13E70C`), the visible watermark text on the PDF will tell you who the document was sent to — that's the recipient information printed directly on each copy. The mark ID is the link back to the source: if you can reach the document's owner, they can look it up in their registry to identify exactly which copy was leaked and to whom.
 
 The XMP metadata uses the namespace `https://gotchamark.net/xmp/1.0/` with two properties:
 - `gotchamark:MarkID` — the unique watermark ID
