@@ -6,7 +6,7 @@ use sha2::{Sha256, Digest};
 
 use crate::contrast::{check_contrast, suggest_fallback};
 use crate::detection::{detect, embed_id};
-use crate::registry::{WatermarkRecord, insert};
+use crate::registry::{WatermarkRecord, insert, delete};
 
 /// All parameters the caller provides for a watermark operation.
 #[derive(Debug, serde::Deserialize)]
@@ -71,7 +71,16 @@ pub fn apply(req: WatermarkRequest) -> Result<WatermarkResult> {
     //    has passed.  A collision-retry loop guards against the rare case where
     //    the same random suffix was already issued today.
     let mark_id = match &req.mark_id {
-        Some(id) if !id.trim().is_empty() => id.trim().to_string(),
+        Some(id) if !id.trim().is_empty() => {
+            let id = id.trim().to_string();
+            // Apply the same collision check as auto-generated IDs — a user-provided
+            // ID that duplicates an existing one would cause the DB insert to fail
+            // *after* the file has been written, leaving an untracked copy on disk.
+            if crate::registry::exists(&id)? {
+                return Err(anyhow!("DUPLICATE_ID:{}", id));
+            }
+            id
+        }
         _ => {
             let date_part = {
                 let now = chrono::Local::now();
@@ -134,15 +143,15 @@ pub fn apply(req: WatermarkRequest) -> Result<WatermarkResult> {
         )?;
     }
 
-    // 6. Save output
-    doc.save(&req.output_path)?;
-
-    // 7. Hash the original PDF for the registry
+    // 6. Hash the original PDF for the registry
     let mut hasher = Sha256::new();
     hasher.update(&req.pdf_bytes);
     let pdf_hash = format!("{:x}", hasher.finalize());
 
-    // 8. Write to registry
+    // 7. Write to registry BEFORE saving the output file.
+    //    If the insert fails (e.g. a race-condition duplicate that slipped past
+    //    the exists() check above), no file is written and no untracked copy
+    //    can escape into the wild.
     let now = Local::now().to_rfc3339();
     let src = std::path::Path::new(&req.source_path);
     let source_name = src.file_name()
@@ -169,6 +178,14 @@ pub fn apply(req: WatermarkRequest) -> Result<WatermarkResult> {
         created_at: now,
     };
     insert(&record)?;
+
+    // 8. Save output — only reached if the registry insert succeeded.
+    //    On file-write failure, remove the DB record as a compensating rollback
+    //    so the registry stays consistent with the filesystem.
+    if let Err(save_err) = doc.save(&req.output_path) {
+        let _ = delete(&mark_id); // best-effort; ignore secondary error
+        return Err(save_err.into());
+    }
 
     // 9. Build human-readable summary
     let summary = build_summary(&mark_id, &req);

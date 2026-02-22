@@ -101,6 +101,12 @@ pub fn insert(record: &WatermarkRecord) -> Result<()> {
     Ok(())
 }
 
+pub fn delete(id: &str) -> Result<()> {
+    let conn = open()?;
+    conn.execute("DELETE FROM watermarks WHERE id = ?1", params![id])?;
+    Ok(())
+}
+
 pub fn all() -> Result<Vec<WatermarkRecord>> {
     let conn = open()?;
     let mut stmt = conn.prepare(
@@ -212,6 +218,15 @@ pub fn export_csv() -> Result<String> {
 }
 
 fn csv_field(s: &str) -> String {
+    // Prefix formula-trigger characters so spreadsheets (Excel, LibreOffice)
+    // treat the value as a literal string rather than evaluating it as a formula.
+    let owned;
+    let s = if matches!(s.chars().next(), Some('=' | '+' | '-' | '@')) {
+        owned = format!("'{}", s);
+        owned.as_str()
+    } else {
+        s
+    };
     if s.contains(',') || s.contains('"') || s.contains('\n') {
         format!("\"{}\"", s.replace('"', "\"\""))
     } else {

@@ -6,6 +6,10 @@ mod watermark;
 
 use serde::{Deserialize, Serialize};
 
+/// Maximum PDF file size accepted by the backend (200 MiB).
+/// Matches the frontend guard in src/main.js.
+const MAX_PDF_BYTES: u64 = 209_715_200;
+
 // ─── Tauri Commands ────────────────────────────────────────────────────────────
 
 /// Apply a watermark to a PDF.
@@ -78,6 +82,10 @@ fn cmd_watermark(
     }
 
     validate_pdf_source_path(&source_path)?;
+    let pdf_meta = std::fs::metadata(&source_path).map_err(|e| e.to_string())?;
+    if pdf_meta.len() > MAX_PDF_BYTES {
+        return Err(format!("PDF_TOO_LARGE:{}", pdf_meta.len()));
+    }
     let pdf_bytes = std::fs::read(&source_path).map_err(|e| e.to_string())?;
     let req = watermark::WatermarkRequest {
         pdf_bytes,
@@ -129,6 +137,10 @@ struct ContrastResult {
 #[tauri::command]
 fn cmd_detect(source_path: String) -> Result<Option<String>, String> {
     validate_pdf_source_path(&source_path)?;
+    let pdf_meta = std::fs::metadata(&source_path).map_err(|e| e.to_string())?;
+    if pdf_meta.len() > MAX_PDF_BYTES {
+        return Err(format!("PDF_TOO_LARGE:{}", pdf_meta.len()));
+    }
     let pdf_bytes = std::fs::read(&source_path).map_err(|e| e.to_string())?;
     detection::detect(&pdf_bytes).map_err(|e| e.to_string())
 }
