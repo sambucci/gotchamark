@@ -1,6 +1,6 @@
 [package]
 name = "gotchamark"
-version = "0.1.2"
+version = "0.1.3"
 description = "Gotcha!Mark — Watermark your PDFs to trace leaks"
 authors = ["Luca Sambucci <sambucci.com>", "Claude Opus 4.6 <noreply@anthropic.com>"]
 edition = "2021"

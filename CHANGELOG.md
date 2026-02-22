@@ -9,6 +9,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.3] — 2026-02-22
+
+### Security
+- **High:** PDF output is now written to disk only *after* the registry insert succeeds. Previously, a failed insert (e.g. duplicate Mark ID) left a real distributed file with no registry entry, undermining traceability. The new order ensures no untracked copy can escape.
+- **High:** User-provided Mark IDs now go through the same duplicate-existence check as auto-generated IDs. A collision now returns an explicit error before any file is written.
+- **Medium:** Added compensating rollback — if the file write fails after a successful insert, the registry record is removed to keep the database consistent with the filesystem.
+- **Medium:** CSV export now prefixes fields that start with `=`, `+`, `-`, or `@` with a single quote, preventing spreadsheet applications (Excel, LibreOffice) from evaluating them as formulas.
+- **Medium:** PDF reads are now gated by a 200 MB file-size check in both the Rust backend (`cmd_watermark`, `cmd_detect`) and the JavaScript frontend (`loadFromPath`), preventing OOM conditions on abnormally large files.
+
+---
+
 ## [0.1.2] — 2026-02-22
 
 ### Added

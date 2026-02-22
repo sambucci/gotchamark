@@ -190,6 +190,21 @@ async function loadFromPath(filePath) {
     return;
   }
 
+  // Guard against loading oversized files before reading into memory.
+  // Matches the MAX_PDF_BYTES constant in the Rust backend (lib.rs).
+  const MAX_PDF_BYTES = 209_715_200; // 200 MiB
+  try {
+    const meta = await tauriFs().stat(filePath);
+    if (meta.size > MAX_PDF_BYTES) {
+      showResult("error", t("err_pdf_too_large"));
+      return;
+    }
+  } catch (statErr) {
+    // If stat fails (e.g. permission edge case), let readFile proceed;
+    // the backend will enforce the limit independently.
+    console.warn("stat failed before readFile:", statErr);
+  }
+
   const bytes    = await tauriFs().readFile(filePath);
   const sep      = filePath.includes("\\") ? "\\" : "/";
   const parts    = filePath.split(sep);
