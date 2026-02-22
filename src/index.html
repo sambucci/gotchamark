@@ -55,6 +55,24 @@
     </div>
   </nav>
 
+  <!-- ── Success popup ── -->
+  <div id="success-modal" class="modal-backdrop hidden">
+    <div class="modal modal-success">
+      <div class="modal-header">
+        <span class="modal-title" data-i18n="success_popup_title">✓ Watermark applied</span>
+        <button id="btn-success-close" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="success-popup-summary" class="success-popup-summary"></p>
+        <p class="success-popup-label" data-i18n="success_popup_saved"></p>
+        <p id="success-popup-path" class="success-popup-path"></p>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-success-ok" class="btn-primary" data-i18n="success_popup_ok">OK</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── License modal ── -->
   <div id="license-modal" class="modal-backdrop hidden">
     <div class="modal">

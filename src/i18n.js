@@ -57,6 +57,9 @@ const STRINGS = {
     err_already_marked_apply: "\u26a0 Already marked (ID: {id}).\nUse the original un-watermarked file.",
     err_low_contrast_apply:   "\u26a0 Text color has insufficient contrast ({ratio}:1).\nSuggested color: {fallback}\n\nAdjust the text color and try again.",
     success_applied:      "\u2713 Watermark applied!\n\n{summary}\n\nSaved to:\n{path}",
+    success_popup_title:  "\u2713 Watermark applied",
+    success_popup_saved:  "Saved to",
+    success_popup_ok:     "OK",
 
     // History view
     hist_heading:         "Watermark history",
@@ -164,6 +167,9 @@ What this means for you:
     err_already_marked_apply: "\u26a0 Gi\u00e0 con filigrana (ID: {id}).\nUsa il file originale senza filigrana.",
     err_low_contrast_apply:   "\u26a0 Il colore del testo ha un contrasto insufficiente ({ratio}:1).\nColore suggerito: {fallback}\n\nModifica il colore e riprova.",
     success_applied:      "\u2713 Filigrana applicata!\n\n{summary}\n\nSalvato in:\n{path}",
+    success_popup_title:  "\u2713 Filigrana applicata",
+    success_popup_saved:  "Salvato in",
+    success_popup_ok:     "OK",
 
     // History view
     hist_heading:         "Cronologia filigrane",

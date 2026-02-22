@@ -194,6 +194,35 @@ body { display: flex; height: 100vh; overflow: hidden; }
   overflow-y: auto;
   flex: 1;
 }
+.modal-footer {
+  padding: 12px 20px 16px;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+}
+.modal-success {
+  width: 420px;
+}
+.success-popup-summary {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 12px;
+}
+.success-popup-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0 0 4px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.success-popup-path {
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--text);
+  word-break: break-all;
+  margin: 0;
+}
 #license-text {
   font-family: monospace;
   font-size: 12px;

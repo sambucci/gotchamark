@@ -617,6 +617,7 @@ btnApply?.addEventListener("click", async () => {
     });
 
     showResult("success", t("success_applied", { summary: result.summary, path: outputPath }));
+    showSuccessPopup(result.summary, outputPath);
   } catch (err) {
     const msg = String(err);
     if (msg.startsWith("ALREADY_MARKED:")) {
@@ -741,6 +742,24 @@ function sanitizeError(msg) {
     .trim();
 }
 
+// ── Success popup ─────────────────────────────────────────────────────────────
+const successModal        = $("success-modal");
+const successPopupSummary = $("success-popup-summary");
+const successPopupPath    = $("success-popup-path");
+
+function showSuccessPopup(summary, path) {
+  successPopupSummary.textContent = summary || "";
+  successPopupPath.textContent    = path    || "";
+  successModal.classList.remove("hidden");
+}
+function hideSuccessPopup() { successModal.classList.add("hidden"); }
+
+$("btn-success-close")?.addEventListener("click", hideSuccessPopup);
+$("btn-success-ok")?.addEventListener("click",    hideSuccessPopup);
+successModal?.addEventListener("click", (e) => {
+  if (e.target === successModal) hideSuccessPopup();
+});
+
 // ── License modal ─────────────────────────────────────────────────────────────
 const licenseModal = $("license-modal");
 $("btn-license")?.addEventListener("click",       () => licenseModal.classList.remove("hidden"));
@@ -749,7 +768,10 @@ licenseModal?.addEventListener("click", (e) => {
   if (e.target === licenseModal) licenseModal.classList.add("hidden");
 });
 window.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") licenseModal.classList.add("hidden");
+  if (e.key === "Escape") {
+    licenseModal.classList.add("hidden");
+    hideSuccessPopup();
+  }
 });
 
 // ── Init ─────────────────────────────────────────────────────────────────────
