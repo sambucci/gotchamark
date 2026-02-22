@@ -47,8 +47,10 @@ pub fn contrast_ratio(fg: (u8, u8, u8), bg: (u8, u8, u8)) -> f64 {
     (lighter + 0.05) / (darker + 0.05)
 }
 
-/// Minimum contrast ratio we enforce (WCAG AA for normal text).
-pub const MIN_CONTRAST_RATIO: f64 = 4.5;
+/// Minimum contrast ratio we enforce.
+/// 1.8 catches near-invisible combinations (e.g. white on light-grey)
+/// while permitting intentionally subtle watermarks on coloured backgrounds.
+pub const MIN_CONTRAST_RATIO: f64 = 1.8;
 
 /// Check if two hex colors have sufficient contrast.
 /// Returns Ok(ratio) if sufficient, Err(ratio) if not.
@@ -83,7 +85,14 @@ mod tests {
 
     #[test]
     fn white_on_white_fails() {
+        // 1.0:1 — no contrast at all, always below threshold
         assert!(check_contrast("#FFFFFF", "#FFFFFF").is_err());
+    }
+
+    #[test]
+    fn near_invisible_fails() {
+        // Very light grey on white — ratio ~1.2, below 1.8
+        assert!(check_contrast("#f0f0f0", "#FFFFFF").is_err());
     }
 
     #[test]

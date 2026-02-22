@@ -7,10 +7,13 @@ use crate::config::db_path;
 pub struct WatermarkRecord {
     pub id: String,
     pub pdf_hash: String,
+    pub source_name: Option<String>,   // filename of the original PDF (no directory)
+    pub source_dir: Option<String>,    // directory of the original PDF
     pub output_path: Option<String>,
     pub recipient: Option<String>,
-    pub sent_date: Option<String>,
+    pub date: Option<String>,
     pub custom_text: Option<String>,
+    pub internal_note: Option<String>,
     pub prefix: Option<String>,
     pub position_x: f64,
     pub position_y: f64,
@@ -30,37 +33,63 @@ pub fn init_db() -> Result<()> {
     let conn = open()?;
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS watermarks (
-            id           TEXT PRIMARY KEY,
-            pdf_hash     TEXT NOT NULL,
-            output_path  TEXT,
-            recipient    TEXT,
-            sent_date    TEXT,
-            custom_text  TEXT,
-            prefix       TEXT,
-            position_x   REAL NOT NULL DEFAULT 0.05,
-            position_y   REAL NOT NULL DEFAULT 0.95,
-            font_color   TEXT NOT NULL DEFAULT '#000000',
-            font_size    REAL NOT NULL DEFAULT 8.0,
-            created_at   TEXT NOT NULL
+            id            TEXT PRIMARY KEY,
+            pdf_hash      TEXT NOT NULL,
+            source_name   TEXT,
+            source_dir    TEXT,
+            output_path   TEXT,
+            recipient     TEXT,
+            date          TEXT,
+            custom_text   TEXT,
+            internal_note TEXT,
+            prefix        TEXT,
+            position_x    REAL NOT NULL DEFAULT 0.05,
+            position_y    REAL NOT NULL DEFAULT 0.95,
+            font_color    TEXT NOT NULL DEFAULT '#000000',
+            font_size     REAL NOT NULL DEFAULT 8.0,
+            created_at    TEXT NOT NULL
         );",
     )?;
+    // Migrations for databases created before schema additions
+    let _ = conn.execute_batch("ALTER TABLE watermarks ADD COLUMN internal_note TEXT;");
+    let _ = conn.execute_batch("ALTER TABLE watermarks ADD COLUMN source_name TEXT;");
+    let _ = conn.execute_batch("ALTER TABLE watermarks ADD COLUMN source_dir TEXT;");
+    // Rename sent_date → date if the old column still exists
+    let _ = conn.execute_batch(
+        "ALTER TABLE watermarks RENAME COLUMN sent_date TO date;"
+    );
     Ok(())
+}
+
+/// Returns true if a record with the given ID already exists in the registry.
+pub fn exists(id: &str) -> Result<bool> {
+    let conn = open()?;
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM watermarks WHERE id = ?1",
+        params![id],
+        |row| row.get(0),
+    )?;
+    Ok(count > 0)
 }
 
 pub fn insert(record: &WatermarkRecord) -> Result<()> {
     let conn = open()?;
     conn.execute(
         "INSERT INTO watermarks
-            (id, pdf_hash, output_path, recipient, sent_date, custom_text,
-             prefix, position_x, position_y, font_color, font_size, created_at)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
+            (id, pdf_hash, source_name, source_dir, output_path, recipient, date,
+             custom_text, internal_note, prefix, position_x, position_y,
+             font_color, font_size, created_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)",
         params![
             record.id,
             record.pdf_hash,
+            record.source_name,
+            record.source_dir,
             record.output_path,
             record.recipient,
-            record.sent_date,
+            record.date,
             record.custom_text,
+            record.internal_note,
             record.prefix,
             record.position_x,
             record.position_y,
@@ -75,24 +104,28 @@ pub fn insert(record: &WatermarkRecord) -> Result<()> {
 pub fn all() -> Result<Vec<WatermarkRecord>> {
     let conn = open()?;
     let mut stmt = conn.prepare(
-        "SELECT id, pdf_hash, output_path, recipient, sent_date, custom_text,
-                prefix, position_x, position_y, font_color, font_size, created_at
+        "SELECT id, pdf_hash, source_name, source_dir, output_path, recipient, date,
+                custom_text, internal_note, prefix, position_x, position_y,
+                font_color, font_size, created_at
          FROM watermarks ORDER BY created_at DESC",
     )?;
     let rows = stmt.query_map([], |row| {
         Ok(WatermarkRecord {
-            id:          row.get(0)?,
-            pdf_hash:    row.get(1)?,
-            output_path: row.get(2)?,
-            recipient:   row.get(3)?,
-            sent_date:   row.get(4)?,
-            custom_text: row.get(5)?,
-            prefix:      row.get(6)?,
-            position_x:  row.get(7)?,
-            position_y:  row.get(8)?,
-            font_color:  row.get(9)?,
-            font_size:   row.get(10)?,
-            created_at:  row.get(11)?,
+            id:            row.get(0)?,
+            pdf_hash:      row.get(1)?,
+            source_name:   row.get(2)?,
+            source_dir:    row.get(3)?,
+            output_path:   row.get(4)?,
+            recipient:     row.get(5)?,
+            date:          row.get(6)?,
+            custom_text:   row.get(7)?,
+            internal_note: row.get(8)?,
+            prefix:        row.get(9)?,
+            position_x:    row.get(10)?,
+            position_y:    row.get(11)?,
+            font_color:    row.get(12)?,
+            font_size:     row.get(13)?,
+            created_at:    row.get(14)?,
         })
     })?;
     let mut records = Vec::new();
@@ -101,29 +134,41 @@ pub fn all() -> Result<Vec<WatermarkRecord>> {
 }
 
 pub fn search(query: &str) -> Result<Vec<WatermarkRecord>> {
+    const MAX_QUERY: usize = 200;
+    if query.len() > MAX_QUERY {
+        return Err(anyhow::anyhow!(
+            "Search query exceeds maximum length ({} chars)", MAX_QUERY
+        ));
+    }
     let conn = open()?;
     let like = format!("%{}%", query);
     let mut stmt = conn.prepare(
-        "SELECT id, pdf_hash, output_path, recipient, sent_date, custom_text,
-                prefix, position_x, position_y, font_color, font_size, created_at
+        "SELECT id, pdf_hash, source_name, source_dir, output_path, recipient, date,
+                custom_text, internal_note, prefix, position_x, position_y,
+                font_color, font_size, created_at
          FROM watermarks
-         WHERE id LIKE ?1 OR recipient LIKE ?1 OR custom_text LIKE ?1 OR sent_date LIKE ?1
+         WHERE id LIKE ?1 OR recipient LIKE ?1 OR custom_text LIKE ?1
+            OR date LIKE ?1 OR internal_note LIKE ?1
+            OR source_name LIKE ?1
          ORDER BY created_at DESC",
     )?;
     let rows = stmt.query_map(params![like], |row| {
         Ok(WatermarkRecord {
-            id:          row.get(0)?,
-            pdf_hash:    row.get(1)?,
-            output_path: row.get(2)?,
-            recipient:   row.get(3)?,
-            sent_date:   row.get(4)?,
-            custom_text: row.get(5)?,
-            prefix:      row.get(6)?,
-            position_x:  row.get(7)?,
-            position_y:  row.get(8)?,
-            font_color:  row.get(9)?,
-            font_size:   row.get(10)?,
-            created_at:  row.get(11)?,
+            id:            row.get(0)?,
+            pdf_hash:      row.get(1)?,
+            source_name:   row.get(2)?,
+            source_dir:    row.get(3)?,
+            output_path:   row.get(4)?,
+            recipient:     row.get(5)?,
+            date:          row.get(6)?,
+            custom_text:   row.get(7)?,
+            internal_note: row.get(8)?,
+            prefix:        row.get(9)?,
+            position_x:    row.get(10)?,
+            position_y:    row.get(11)?,
+            font_color:    row.get(12)?,
+            font_size:     row.get(13)?,
+            created_at:    row.get(14)?,
         })
     })?;
     let mut records = Vec::new();
@@ -141,17 +186,20 @@ pub fn export_json() -> Result<String> {
 pub fn export_csv() -> Result<String> {
     let records = all()?;
     let mut out = String::from(
-        "id,pdf_hash,output_path,recipient,sent_date,custom_text,prefix,position_x,position_y,font_color,font_size,created_at\n"
+        "id,pdf_hash,source_name,source_dir,output_path,recipient,date,custom_text,internal_note,prefix,position_x,position_y,font_color,font_size,created_at\n"
     );
     for r in records {
         out.push_str(&format!(
-            "{},{},{},{},{},{},{},{},{},{},{},{}\n",
+            "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
             csv_field(&r.id),
             csv_field(&r.pdf_hash),
+            csv_field(&r.source_name.unwrap_or_default()),
+            csv_field(&r.source_dir.unwrap_or_default()),
             csv_field(&r.output_path.unwrap_or_default()),
             csv_field(&r.recipient.unwrap_or_default()),
-            csv_field(&r.sent_date.unwrap_or_default()),
+            csv_field(&r.date.unwrap_or_default()),
             csv_field(&r.custom_text.unwrap_or_default()),
+            csv_field(&r.internal_note.unwrap_or_default()),
             csv_field(&r.prefix.unwrap_or_default()),
             r.position_x,
             r.position_y,

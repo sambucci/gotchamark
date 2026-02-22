@@ -4,17 +4,19 @@ mod detection;
 mod registry;
 mod watermark;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 // ─── Tauri Commands ────────────────────────────────────────────────────────────
 
 /// Apply a watermark to a PDF.
-/// pdf_b64: base64-encoded PDF bytes.
+/// source_path: absolute path to the input PDF — Rust reads it directly,
+/// eliminating any base64 encoding round-trip corruption.
 #[tauri::command]
 fn cmd_watermark(
     recipient: Option<String>,
     date: Option<String>,
     custom_text: Option<String>,
+    internal_note: Option<String>,
     mark_id: Option<String>,
     font_color: String,
     bg_color: String,
@@ -22,15 +24,67 @@ fn cmd_watermark(
     pos_x: f64,
     pos_y: f64,
     all_pages: bool,
-    pdf_b64: String,
+    source_path: String,
     output_path: String,
 ) -> Result<watermark::WatermarkResult, String> {
-    let pdf_bytes = base64_decode(&pdf_b64).map_err(|e| e.to_string())?;
+    // ── Input length validation ────────────────────────────────────────────
+    const MAX_RECIPIENT:  usize = 120;
+    const MAX_DATE:       usize = 32;
+    const MAX_CUSTOM:     usize = 200;
+    const MAX_NOTE:       usize = 500;
+    const MAX_MARK_ID:    usize = 128;
+    const MAX_COLOR:      usize = 32;
+
+    if recipient.as_deref().map(|s| s.len()).unwrap_or(0) > MAX_RECIPIENT {
+        return Err(format!("Recipient exceeds maximum length ({MAX_RECIPIENT} chars)"));
+    }
+    if date.as_deref().map(|s| s.len()).unwrap_or(0) > MAX_DATE {
+        return Err(format!("Date exceeds maximum length ({MAX_DATE} chars)"));
+    }
+    if custom_text.as_deref().map(|s| s.len()).unwrap_or(0) > MAX_CUSTOM {
+        return Err(format!("Custom text exceeds maximum length ({MAX_CUSTOM} chars)"));
+    }
+    if internal_note.as_deref().map(|s| s.len()).unwrap_or(0) > MAX_NOTE {
+        return Err(format!("Internal note exceeds maximum length ({MAX_NOTE} chars)"));
+    }
+    if mark_id.as_deref().map(|s| s.len()).unwrap_or(0) > MAX_MARK_ID {
+        return Err(format!("Mark ID exceeds maximum length ({MAX_MARK_ID} chars)"));
+    }
+    if font_color.len() > MAX_COLOR || bg_color.len() > MAX_COLOR {
+        return Err("Color value exceeds maximum length".to_string());
+    }
+    if !(1.0..=100.0).contains(&font_size) {
+        return Err("Font size must be between 1 and 100 pt".to_string());
+    }
+
+    // ── Output path validation ─────────────────────────────────────────────
+    {
+        let out = std::path::Path::new(&output_path);
+        // Must end with .pdf (case-insensitive)
+        let ext = out.extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_ascii_lowercase());
+        if ext.as_deref() != Some("pdf") {
+            return Err("Output path must end with .pdf".to_string());
+        }
+        // Must not contain path traversal components
+        if out.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+            return Err("Output path must not contain '..' components".to_string());
+        }
+        // Must be absolute
+        if !out.is_absolute() {
+            return Err("Output path must be an absolute path".to_string());
+        }
+    }
+
+    validate_pdf_source_path(&source_path)?;
+    let pdf_bytes = std::fs::read(&source_path).map_err(|e| e.to_string())?;
     let req = watermark::WatermarkRequest {
         pdf_bytes,
         recipient,
         date,
         custom_text,
+        internal_note,
         mark_id,
         font_color,
         bg_color,
@@ -39,6 +93,7 @@ fn cmd_watermark(
         pos_y,
         all_pages,
         output_path,
+        source_path,
     };
     watermark::apply(req).map_err(|e| e.to_string())
 }
@@ -68,12 +123,32 @@ struct ContrastResult {
     suggested_fallback: Option<String>,
 }
 
-/// Check if a PDF (base64) is already GotchaMark'd.
+/// Check if a PDF is already GotchaMark'd.
+/// source_path: absolute path — Rust reads the file directly.
 /// Returns Some(mark_id) or null.
 #[tauri::command]
-fn cmd_detect(pdf_b64: String) -> Result<Option<String>, String> {
-    let pdf_bytes = base64_decode(&pdf_b64).map_err(|e| e.to_string())?;
+fn cmd_detect(source_path: String) -> Result<Option<String>, String> {
+    validate_pdf_source_path(&source_path)?;
+    let pdf_bytes = std::fs::read(&source_path).map_err(|e| e.to_string())?;
     detection::detect(&pdf_bytes).map_err(|e| e.to_string())
+}
+
+/// Shared guard: source path must be absolute, end in .pdf, and contain no traversal.
+fn validate_pdf_source_path(path: &str) -> Result<(), String> {
+    let p = std::path::Path::new(path);
+    let ext = p.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_ascii_lowercase());
+    if ext.as_deref() != Some("pdf") {
+        return Err("Source path must end with .pdf".to_string());
+    }
+    if p.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+        return Err("Source path must not contain '..' components".to_string());
+    }
+    if !p.is_absolute() {
+        return Err("Source path must be an absolute path".to_string());
+    }
+    Ok(())
 }
 
 /// Return all watermark records from the registry.
@@ -100,6 +175,85 @@ fn cmd_export_csv() -> Result<String, String> {
     registry::export_csv().map_err(|e| e.to_string())
 }
 
+/// User preferences persisted between sessions.
+#[derive(Debug, Serialize, Deserialize)]
+struct AppPrefs {
+    font_color: String,
+    font_size: f64,
+    /// BCP-47 / ISO 639-1 language code, e.g. "en" or "it".
+    #[serde(default = "default_lang")]
+    lang: String,
+}
+
+fn default_lang() -> String { "en".to_string() }
+
+impl Default for AppPrefs {
+    fn default() -> Self {
+        AppPrefs {
+            font_color: "#1a1a1a".to_string(),
+            font_size: 7.5,
+            lang: default_lang(),
+        }
+    }
+}
+
+fn prefs_path() -> anyhow::Result<std::path::PathBuf> {
+    let mut p = config::app_data_dir()?;
+    p.push("prefs.json");
+    Ok(p)
+}
+
+/// Load preferences. Returns defaults if the file doesn't exist yet.
+#[tauri::command]
+fn cmd_load_prefs() -> Result<AppPrefs, String> {
+    const MAX_PREFS_BYTES: u64 = 8_192; // 8 KB — a prefs.json should never exceed this
+
+    let path = prefs_path().map_err(|e| e.to_string())?;
+    if !path.exists() {
+        return Ok(AppPrefs::default());
+    }
+    // Guard against a maliciously large prefs file before reading it into memory
+    let meta = std::fs::metadata(&path).map_err(|e| e.to_string())?;
+    if meta.len() > MAX_PREFS_BYTES {
+        // Silently fall back to defaults rather than crashing on startup
+        return Ok(AppPrefs::default());
+    }
+    let raw = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    // serde_json will use #[serde(default)] for missing fields (e.g. old prefs without lang)
+    // On parse failure, fall back to defaults so a corrupted file doesn't brick the app
+    Ok(serde_json::from_str(&raw).unwrap_or_default())
+}
+
+/// Save preferences to disk.
+#[tauri::command]
+fn cmd_save_prefs(font_color: String, font_size: f64, lang: String) -> Result<(), String> {
+    // ── Validation ────────────────────────────────────────────────────────
+    // font_color: must be a 4- or 7-char hex string starting with '#'
+    const MAX_COLOR: usize = 7;
+    if font_color.len() > MAX_COLOR
+        || !font_color.starts_with('#')
+        || font_color.len() < 4
+        || !font_color[1..].chars().all(|c| c.is_ascii_hexdigit())
+    {
+        return Err("Invalid font color — must be a hex color (e.g. #1a1a1a)".to_string());
+    }
+    // font_size: must be a finite number in the valid range
+    if !font_size.is_finite() || !(1.0..=100.0).contains(&font_size) {
+        return Err("Font size must be a finite number between 1 and 100 pt".to_string());
+    }
+    // lang: must be one of the supported ISO 639-1 codes
+    // NOTE: keep in sync with LANGUAGES array in src/i18n.js
+    const SUPPORTED_LANGS: &[&str] = &["en", "it"];
+    if !SUPPORTED_LANGS.contains(&lang.as_str()) {
+        return Err(format!("Unsupported language code: {}", lang));
+    }
+
+    let prefs = AppPrefs { font_color, font_size, lang };
+    let path = prefs_path().map_err(|e| e.to_string())?;
+    let json = serde_json::to_string_pretty(&prefs).map_err(|e| e.to_string())?;
+    std::fs::write(&path, json).map_err(|e| e.to_string())
+}
+
 // ─── App Entry Point ───────────────────────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -119,41 +273,10 @@ pub fn run() {
             cmd_search_watermarks,
             cmd_export_json,
             cmd_export_csv,
+            cmd_load_prefs,
+            cmd_save_prefs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running gotchamark");
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-fn base64_decode(s: &str) -> anyhow::Result<Vec<u8>> {
-    base64_simple::decode(s)
-}
-
-/// Minimal base64 decoder (avoids adding another crate for now).
-mod base64_simple {
-    use anyhow::{anyhow, Result};
-
-    const TABLE: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-    pub fn decode(input: &str) -> Result<Vec<u8>> {
-        let input = input.trim().replace('\n', "").replace('\r', "");
-        let input = input.as_bytes();
-        let mut out = Vec::with_capacity(input.len() * 3 / 4);
-        let mut buf = 0u32;
-        let mut bits = 0u8;
-
-        for &c in input {
-            if c == b'=' { break; }
-            let val = TABLE.iter().position(|&t| t == c)
-                .ok_or_else(|| anyhow!("invalid base64 char: {}", c as char))? as u32;
-            buf = (buf << 6) | val;
-            bits += 6;
-            if bits >= 8 {
-                bits -= 8;
-                out.push(((buf >> bits) & 0xFF) as u8);
-            }
-        }
-        Ok(out)
-    }
-}

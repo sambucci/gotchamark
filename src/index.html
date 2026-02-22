@@ -13,6 +13,8 @@
     <div id="logo">
       <span class="logo-gotcha">Gotcha!</span><span class="logo-mark">Mark</span>
     </div>
+    <div id="sidebar-domain">gotchamark.net</div>
+
     <button class="nav-btn active" data-view="watermark">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -20,22 +22,36 @@
         <line x1="8" y1="13" x2="16" y2="13"/>
         <line x1="8" y1="17" x2="12" y2="17"/>
       </svg>
-      Watermark
+      <span data-i18n="nav_watermark">Watermark</span>
     </button>
     <button class="nav-btn" data-view="history">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="10"/>
         <polyline points="12 6 12 12 16 14"/>
       </svg>
-      History
+      <span data-i18n="nav_history">History</span>
     </button>
+
+    <!-- Language picker — inline dropdown, no separate page -->
+    <div id="lang-picker">
+      <button id="btn-lang" class="nav-btn" title="Language / Lingua">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="2" y1="12" x2="22" y2="12"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        <span data-i18n="nav_language">Language</span>
+      </button>
+      <div id="lang-menu" class="hidden">
+        <!-- populated by JS from LANGUAGES -->
+      </div>
+    </div>
 
     <div id="sidebar-footer">
       <div id="sidebar-appname"><span class="logo-gotcha">Gotcha!</span><span class="logo-mark-sm">Mark</span></div>
-      <div id="sidebar-version">v0.1.0</div>
+      <div id="sidebar-version">v0.1.2</div>
       <div id="sidebar-copy">&copy; Layer Focused</div>
-      <div id="sidebar-url">gotchamark.net</div>
-      <button id="btn-license" class="sidebar-link-btn">License</button>
+      <button id="btn-license" class="sidebar-link-btn" data-i18n="license_title">License</button>
     </div>
   </nav>
 
@@ -43,16 +59,11 @@
   <div id="license-modal" class="modal-backdrop hidden">
     <div class="modal">
       <div class="modal-header">
-        <span class="modal-title">License</span>
+        <span class="modal-title" data-i18n="license_title">License</span>
         <button id="btn-license-close" class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
-        <pre id="license-text">
-[License placeholder — to be determined]
-
-Gotcha!Mark is open source software.
-License text will be added here in a future release.
-        </pre>
+        <pre id="license-text"></pre>
       </div>
     </div>
   </div>
@@ -66,96 +77,103 @@ License text will be added here in a future release.
 
         <!-- Left panel: form -->
         <div id="wm-form-panel">
-          <h2>New watermark</h2>
+          <h2 data-i18n="wm_heading">New watermark</h2>
 
           <!-- Drop zone -->
           <div class="form-group">
-            <label>PDF file</label>
+            <label data-i18n="wm_pdf_label">PDF file</label>
             <div id="drop-zone">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="drop-icon">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="17 8 12 3 7 8"/>
                 <line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
-              <span id="drop-label">Drop a PDF here, or <button id="btn-browse" class="link-btn">browse</button></span>
+              <span id="drop-label"><span data-i18n="wm_drop_hint">Drop a PDF here, or</span> <button id="btn-browse" class="link-btn" data-i18n="wm_browse">browse</button></span>
               <span id="drop-filename" class="hidden file-name"></span>
             </div>
-            <!-- Hidden file input -->
-            <input type="file" id="file-input" accept=".pdf" class="hidden" />
           </div>
 
           <!-- Fields (shown after PDF loaded) -->
           <div id="wm-fields" class="hidden">
 
             <div class="form-section-title">
-              Watermark info
-              <span class="badge-optional">all optional</span>
+              <span data-i18n="wm_section_info">Watermark info</span>
+              <span class="badge-optional" data-i18n="wm_all_optional">all optional</span>
             </div>
 
             <div class="form-row">
               <div class="form-group">
-                <label for="f-recipient">Recipient</label>
-                <input type="text" id="f-recipient" placeholder="Acme Corp" maxlength="60" />
+                <label for="f-recipient" data-i18n="wm_recipient">Recipient</label>
+                <input type="text" id="f-recipient" maxlength="60" />
               </div>
               <div class="form-group narrow">
-                <label for="f-date">Date</label>
+                <label for="f-date" data-i18n="wm_date">Date</label>
                 <input type="date" id="f-date" />
               </div>
             </div>
 
             <div class="form-group">
-              <label for="f-custom">Custom text</label>
-              <input type="text" id="f-custom" placeholder="Add optional custom text here" maxlength="80" />
+              <label for="f-custom" data-i18n="wm_custom">Custom text</label>
+              <input type="text" id="f-custom" maxlength="80" />
+            </div>
+
+            <div class="form-group">
+              <label for="f-note">
+                <span data-i18n="wm_note">Internal note</span>
+                <span class="badge-optional" data-i18n="wm_note_hidden">won't be shown</span>
+              </label>
+              <input type="text" id="f-note" maxlength="200" />
             </div>
 
             <div class="form-section-title">
-              Mark ID
-              <span class="badge-optional">all optional</span>
+              <span data-i18n="wm_section_markid">Mark ID</span>
+              <span class="badge-optional" data-i18n="wm_all_optional">all optional</span>
             </div>
-            <p class="field-hint">A unique ID is always auto-generated. You can clear it entirely if you prefer no ID, or edit it freely.</p>
+            <p class="field-hint" data-i18n="wm_markid_hint">A unique ID is always auto-generated. You can clear it entirely if you prefer no ID, or edit it freely.</p>
             <div class="form-row">
               <div class="form-group narrow">
-                <label for="f-prefix">Prefix</label>
-                <input type="text" id="f-prefix" placeholder="e.g. ACME" maxlength="12" />
+                <label for="f-prefix" data-i18n="wm_prefix">Prefix</label>
+                <input type="text" id="f-prefix" maxlength="12" />
               </div>
               <div class="form-group">
-                <label for="f-mark-id">Mark ID</label>
+                <label for="f-mark-id" data-i18n="wm_markid">Mark ID</label>
                 <input type="text" id="f-mark-id" class="mono-input" maxlength="40" />
               </div>
             </div>
 
-            <div class="form-section-title">Appearance</div>
+            <div class="form-section-title" data-i18n="wm_section_appearance">Appearance</div>
             <div class="form-row">
               <div class="form-group">
-                <label for="f-color">Text color</label>
+                <label for="f-color" data-i18n="wm_color">Text color</label>
                 <div class="color-input-wrap">
                   <input type="color" id="f-color" value="#1a1a1a" />
                   <input type="text" id="f-color-hex" value="#1a1a1a" maxlength="7" class="hex-text" />
                 </div>
-                <div id="contrast-warning" class="warning hidden"></div>
               </div>
               <div class="form-group narrow">
-                <label for="f-size">Font size (pt)</label>
+                <label for="f-size" data-i18n="wm_fontsize">Font size (pt)</label>
                 <input type="number" id="f-size" value="7.5" min="4" max="20" step="0.5" />
               </div>
             </div>
+            <div id="contrast-warning" class="warning hidden"></div>
 
-            <div class="form-section-title">Pages</div>
+            <div class="form-section-title" data-i18n="wm_section_pages">Pages</div>
             <div class="radio-group">
-              <label><input type="radio" name="pages" value="all" checked /> All pages</label>
-              <label><input type="radio" name="pages" value="first" /> First page only</label>
+              <label><input type="radio" name="pages" value="all" checked /> <span data-i18n="wm_pages_all">All pages</span></label>
+              <label><input type="radio" name="pages" value="first" /> <span data-i18n="wm_pages_first">First page only</span></label>
             </div>
 
-            <p class="position-hint">
+            <p class="position-hint" data-i18n="wm_drag_hint">
               Drag the watermark on the PDF preview to reposition it.
             </p>
 
             <div id="wm-actions">
-              <button id="btn-apply" class="btn-primary">Apply watermark &amp; save</button>
+              <button id="btn-apply" class="btn-primary" data-i18n="wm_apply">Apply watermark &amp; save</button>
             </div>
 
-            <div id="result-banner" class="hidden"></div>
-          </div>
+          </div><!-- /#wm-fields -->
+
+          <div id="result-banner" class="hidden"></div>
         </div>
 
         <!-- Right panel: PDF preview -->
@@ -168,20 +186,24 @@ License text will be added here in a future release.
               <line x1="18" y1="42" x2="38" y2="42"/>
               <line x1="18" y1="52" x2="42" y2="52"/>
             </svg>
-            <p>PDF preview<br/>will appear here</p>
+            <p data-i18n="wm_preview_hint">PDF preview<br/>will appear here</p>
           </div>
 
           <div id="preview-container" class="hidden">
             <div id="preview-page-wrap">
-              <!-- PDF render canvas -->
-              <canvas id="pdf-canvas"></canvas>
-              <!-- Watermark overlay canvas (click target) -->
-              <canvas id="overlay-canvas"></canvas>
+              <div id="preview-canvas-wrap">
+                <canvas id="pdf-canvas"></canvas>
+                <canvas id="overlay-canvas"></canvas>
+              </div>
             </div>
             <div id="preview-nav">
               <button id="btn-prev-page" class="icon-btn">&#8592;</button>
               <span id="page-indicator">Page 1 of 1</span>
               <button id="btn-next-page" class="icon-btn">&#8594;</button>
+              <div class="preview-nav-sep"></div>
+              <button id="btn-zoom-out" class="icon-btn" title="Zoom out">&#8722;</button>
+              <span id="zoom-label">100%</span>
+              <button id="btn-zoom-in"  class="icon-btn" title="Zoom in">&#43;</button>
             </div>
           </div>
         </div>
@@ -192,12 +214,12 @@ License text will be added here in a future release.
     <!-- ════ HISTORY VIEW ════ -->
     <section id="view-history" class="view">
       <div id="history-header">
-        <h2>Watermark history</h2>
+        <h2 data-i18n="hist_heading">Watermark history</h2>
         <div id="history-controls">
-          <input type="text" id="search-box" placeholder="Search by ID, recipient, text…" />
-          <button id="btn-refresh" class="btn-secondary">Refresh</button>
-          <button id="btn-export-json" class="btn-secondary">Export JSON</button>
-          <button id="btn-export-csv" class="btn-secondary">Export CSV</button>
+          <input type="text" id="search-box" />
+          <button id="btn-refresh" class="btn-secondary" data-i18n="hist_refresh">Refresh</button>
+          <button id="btn-export-json" class="btn-secondary" data-i18n="hist_export_json">Export JSON</button>
+          <button id="btn-export-csv" class="btn-secondary" data-i18n="hist_export_csv">Export CSV</button>
         </div>
       </div>
 
@@ -205,11 +227,14 @@ License text will be added here in a future release.
         <table id="history-table" class="hidden">
           <thead>
             <tr>
-              <th>Mark ID</th>
-              <th>Recipient</th>
-              <th>Date</th>
-              <th>Custom text</th>
-              <th>Created at</th>
+              <th data-i18n="hist_col_id">Mark ID</th>
+              <th data-i18n="hist_col_recipient">Recipient</th>
+              <th data-i18n="hist_col_date">Date</th>
+              <th data-i18n="hist_col_custom">Custom text</th>
+              <th data-i18n="hist_col_note">Internal note</th>
+              <th data-i18n="hist_col_source_name">Source file</th>
+              <th data-i18n="hist_col_source_dir">Source folder</th>
+              <th data-i18n="hist_col_created">Created at</th>
             </tr>
           </thead>
           <tbody id="history-tbody"></tbody>
@@ -226,14 +251,14 @@ License text will be added here in a future release.
               <line x1="46" y1="42" x2="46" y2="50"/>
             </svg>
           </div>
-          <p class="history-empty-title">No watermarks yet</p>
-          <p class="history-empty-sub">Every PDF you watermark will be recorded here, along with who you sent it to. If a copy ever leaks, paste the mark ID into the search box above to find out who got that version.</p>
+          <p class="history-empty-title" data-i18n="hist_empty_title">No watermarks yet</p>
+          <p class="history-empty-sub" data-i18n="hist_empty_sub">Every PDF you watermark will be recorded here, along with who you sent it to. If a copy ever leaks, paste the mark ID into the search box above to find out who got that version.</p>
         </div>
       </div>
     </section>
 
   </main>
 
-  <script src="main.js" defer></script>
+  <script src="main.js" type="module" defer></script>
 </body>
 </html>
