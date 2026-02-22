@@ -245,9 +245,20 @@ fn add_watermark_to_page(
 
     let line_height = font_size * 1.3;
 
-    // Build PDF content stream operations
+    // Build PDF content stream operations.
+    //
+    // The watermark stream is PREPENDED before the existing page content so that
+    // it always runs in the default PDF graphics state (identity CTM, origin at
+    // bottom-left, Y increases upward).  Appending after existing content would
+    // inherit whatever CTM was left active — many PDFs (Word, LibreOffice, print
+    // pipelines) end their content stream with a Y-flip transform that maps the
+    // origin to the top-left, which causes appended text to appear mirrored and
+    // at the wrong position.  Prepending avoids this entirely.
+    //
+    // The q/Q pair still isolates our graphics state changes (color, text matrix)
+    // from whatever the original content stream sets up after us.
     let mut ops: Vec<Operation> = vec![
-        // Save graphics state
+        // Save graphics state so our color change doesn't affect original content
         Operation::new("q", vec![]),
         // Set text color (non-stroking)
         Operation::new("rg", vec![
@@ -255,13 +266,8 @@ fn add_watermark_to_page(
             Object::Real(gf),
             Object::Real(bf),
         ]),
-        // Begin text
+        // Begin text block
         Operation::new("BT", vec![]),
-        // Use Helvetica (standard PDF font — no embedding needed)
-        Operation::new("Tf", vec![
-            Object::Name(b"Helvetica".to_vec()),
-            Object::Real(font_size as f32),
-        ]),
     ];
 
     // Row 3 (bottom-most, smallest)
@@ -278,7 +284,7 @@ fn add_watermark_to_page(
             Object::Name(b"Helvetica".to_vec()),
             Object::Real(*size as f32),
         ]));
-        // Move-to-absolute using Tm matrix
+        // Tm sets the text matrix to an absolute position in default PDF space.
         ops.push(Operation::new("Tm", vec![
             Object::Real(1.0f32), Object::Real(0.0f32),
             Object::Real(0.0f32), Object::Real(1.0f32),
@@ -289,12 +295,9 @@ fn add_watermark_to_page(
         ]));
     }
 
+    // End text block, then restore graphics state (and the original CTM).
     ops.push(Operation::new("ET", vec![]));
-    // We need to ensure Helvetica is in the page's font resources
     ops.push(Operation::new("Q", vec![]));
-
-    // Remove the Td operations (they conflict with Tm); clean up ops
-    let ops: Vec<Operation> = ops.into_iter().filter(|op| op.operator != "Td").collect();
 
     let content = Content { operations: ops };
     let encoded = content.encode()?;
@@ -305,8 +308,20 @@ fn add_watermark_to_page(
     // Ensure Helvetica is registered in the page's Resources > Font dictionary
     ensure_helvetica_resource(doc, page_id)?;
 
-    // Append this stream to the page's Contents
-    append_to_page_contents(doc, page_id, watermark_ref)?;
+    // Append the watermark stream so it paints on top of the original content.
+    // To guarantee a clean default graphics state (identity CTM) for our Tm
+    // absolute coordinates, we bracket the existing page Contents with a
+    // save/restore pair:
+    //
+    //   [ q-stream | original content stream(s) | Q-stream | watermark ]
+    //
+    // The bare "q" at the start saves whatever CTM precedes the original
+    // content (always the identity at page level).  The bare "Q" after the
+    // original content discards every unsaved CTM change the document may
+    // have accumulated (e.g. the `1 0 0 -1 0 842 cm` Y-flip used by
+    // LibreOffice/Word exports).  Our watermark stream then runs in the
+    // restored identity CTM, so Tm absolute positions match real page space.
+    append_watermark_with_restore(doc, page_id, watermark_ref)?;
 
     Ok(())
 }
@@ -398,35 +413,54 @@ fn ensure_helvetica_resource(doc: &mut Document, page_id: lopdf::ObjectId) -> Re
     Ok(())
 }
 
-fn append_to_page_contents(
+/// Append the watermark stream after the existing page contents, but wrap
+/// the original contents in a `q` / `Q` save-restore pair first.
+///
+/// Resulting Contents array:
+///   [ q-stream, <original stream(s)>, Q-stream, watermark-stream ]
+///
+/// The `q` saves the clean identity CTM that exists at the start of page
+/// rendering.  The `Q` after the original content discards all CTM
+/// modifications made by that content (e.g. the Y-flip `1 0 0 -1 0 h cm`
+/// emitted by LibreOffice/Word PDF exports).  The watermark stream then
+/// executes with the identity CTM restored, so absolute `Tm` coordinates
+/// correspond to real PDF page space.
+///
+/// For pages whose original content leaves the CTM unmodified the Q is a
+/// no-op (it just pops the state we pushed), so this works correctly for
+/// both "normal" and "flipped" PDFs.
+fn append_watermark_with_restore(
     doc: &mut Document,
     page_id: lopdf::ObjectId,
-    new_stream_ref: lopdf::ObjectId,
+    watermark_ref: lopdf::ObjectId,
 ) -> Result<()> {
+    // Build a 1-operator "q" stream (push graphics state)
+    let save_content   = Content { operations: vec![Operation::new("q", vec![])] };
+    let save_stream    = Stream::new(Dictionary::new(), save_content.encode()?);
+    let save_ref       = doc.add_object(Object::Stream(save_stream));
+
+    // Build a 1-operator "Q" stream (pop graphics state)
+    let restore_content = Content { operations: vec![Operation::new("Q", vec![])] };
+    let restore_stream  = Stream::new(Dictionary::new(), restore_content.encode()?);
+    let restore_ref     = doc.add_object(Object::Stream(restore_stream));
+
     let page = doc.get_object_mut(page_id)?.as_dict_mut()?;
-
     let existing = page.get(b"Contents").ok().cloned();
-    match existing {
-        None => {
-            page.set(b"Contents", Object::Reference(new_stream_ref));
-        }
-        Some(Object::Reference(r)) => {
-            page.set(
-                b"Contents",
-                Object::Array(vec![
-                    Object::Reference(r),
-                    Object::Reference(new_stream_ref),
-                ]),
-            );
-        }
-        Some(Object::Array(mut arr)) => {
-            arr.push(Object::Reference(new_stream_ref));
-            page.set(b"Contents", Object::Array(arr));
-        }
-        _ => {
-            page.set(b"Contents", Object::Reference(new_stream_ref));
-        }
-    }
 
+    let original_refs: Vec<Object> = match existing {
+        None => vec![],
+        Some(Object::Reference(r)) => vec![Object::Reference(r)],
+        Some(Object::Array(arr))   => arr,
+        _                          => vec![],
+    };
+
+    // [ q, <original streams…>, Q, watermark ]
+    let mut new_contents = Vec::with_capacity(original_refs.len() + 3);
+    new_contents.push(Object::Reference(save_ref));
+    new_contents.extend(original_refs);
+    new_contents.push(Object::Reference(restore_ref));
+    new_contents.push(Object::Reference(watermark_ref));
+
+    page.set(b"Contents", Object::Array(new_contents));
     Ok(())
 }

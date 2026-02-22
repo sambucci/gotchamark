@@ -40,12 +40,12 @@ pub fn detect(pdf_bytes: &[u8]) -> Result<Option<String>> {
             .and_then(|d| d.get(b"Metadata"))
             .and_then(|o| o.as_reference())
         {
-            if let Ok(lopdf::Object::Stream(mut stream)) = doc.get_object(metadata_ref).cloned() {
+            if let Ok(lopdf::Object::Stream(stream)) = doc.get_object(metadata_ref).cloned() {
                 // get_plain_content() applies any stream filters (FlateDecode, etc.)
                 // and returns the decoded bytes. Falls back to raw content if decoding
                 // fails (e.g. unrecognised filter), so detection still attempts UTF-8.
                 let decoded = stream.get_plain_content()
-                    .unwrap_or_else(|_| stream.content.clone());
+                    .unwrap_or_else(|_| stream.content.to_vec());
                 if let Ok(xml) = std::str::from_utf8(&decoded) {
                     if let Some(id) = extract_xmp_mark_id(xml) {
                         return Ok(Some(id));
