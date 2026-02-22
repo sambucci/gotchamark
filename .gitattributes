@@ -1,0 +1,3 @@
+# Tell GitHub linguist to ignore bundled vendor files
+src/pdf.min.mjs linguist-vendored
+src/pdf.worker.min.mjs linguist-vendored
