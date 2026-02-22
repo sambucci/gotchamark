@@ -19,6 +19,8 @@ pub struct WatermarkRequest {
     pub custom_text: Option<String>,
     // Row 2 — the full mark ID as the user left it (may be empty → auto-generate)
     pub mark_id: Option<String>,
+    // Internal note — stored in registry only, never printed on the PDF
+    pub internal_note: Option<String>,
     // Styling
     pub font_color: String,         // hex, e.g. "#1a1a1a"
     pub bg_color: String,           // hex of the page bg at placement area, for contrast check
@@ -30,6 +32,8 @@ pub struct WatermarkRequest {
     pub all_pages: bool,
     /// Where to save the output file
     pub output_path: String,
+    /// Absolute path of the original (unwatermarked) PDF
+    pub source_path: String,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -60,25 +64,49 @@ pub fn apply(req: WatermarkRequest) -> Result<WatermarkResult> {
         }
     }
 
-    // 3. Determine the mark ID — use what the user provided, or auto-generate
+    // 3. Determine the mark ID — use what the user provided, or auto-generate.
+    //    Auto-generation mirrors the JS format: GM-<date5>-<rand8>
+    //    where date5 is today's date (YYYYMMDD) encoded in base-36 uppercase,
+    //    giving a deterministic daily prefix that can never repeat after the day
+    //    has passed.  A collision-retry loop guards against the rare case where
+    //    the same random suffix was already issued today.
     let mark_id = match &req.mark_id {
         Some(id) if !id.trim().is_empty() => id.trim().to_string(),
         _ => {
-            let hex = Uuid::new_v4().to_string().replace('-', "").to_uppercase();
-            format!("GM-{}", &hex[..8])
+            let date_part = {
+                let now = chrono::Local::now();
+                let yyyymmdd: u64 =
+                    now.format("%Y%m%d").to_string().parse::<u64>()?;
+                // Encode as base-36, uppercase, zero-padded to 5 chars
+                base36_encode(yyyymmdd)
+            };
+            // Retry until we find an ID not already in the registry
+            loop {
+                let raw = Uuid::new_v4().to_string().replace('-', "").to_uppercase();
+                let hex = &raw[..8];
+                let candidate = format!("GM-{}-{}", date_part, hex);
+                if !crate::registry::exists(&candidate)? {
+                    break candidate;
+                }
+            }
         }
     };
 
     // 4. Build the three watermark lines
+    // NOTE: Helvetica Type1 with WinAnsiEncoding only covers Latin-1 (cp1252).
+    // The em-dash (U+2014, 3-byte UTF-8) renders as garbage — use plain " - " instead.
     let row1 = build_row1(&req);
     let row2 = mark_id.clone();
-    let row3 = "gotchamark.net — watermark your docs, trace the leaks".to_string();
+    let row3 = "gotchamark.net - watermark your docs, trace the leaks".to_string();
 
     // 5. Load and modify the PDF
     let mut doc = Document::load_mem(&req.pdf_bytes)?;
 
-    // Embed the ID in metadata
+    // Embed the ID in the Info dictionary and as an XMP metadata stream.
+    // XMP is attached to the document catalog and survives pipelines that
+    // rebuild or strip the Info dict (Ghostscript, PDF/A converters, etc.).
     embed_id(&mut doc, &mark_id);
+    crate::detection::embed_xmp(&mut doc, &mark_id);
 
     // Get page IDs to watermark
     let page_ids: Vec<lopdf::ObjectId> = doc.get_pages()
@@ -116,13 +144,23 @@ pub fn apply(req: WatermarkRequest) -> Result<WatermarkResult> {
 
     // 8. Write to registry
     let now = Local::now().to_rfc3339();
+    let src = std::path::Path::new(&req.source_path);
+    let source_name = src.file_name()
+        .and_then(|n| n.to_str())
+        .map(str::to_string);
+    let source_dir = src.parent()
+        .and_then(|p| p.to_str())
+        .map(str::to_string);
     let record = WatermarkRecord {
         id: mark_id.clone(),
         pdf_hash,
+        source_name,
+        source_dir,
         output_path: Some(req.output_path.clone()),
         recipient: req.recipient.clone(),
-        sent_date: req.date.clone(),
+        date: req.date.clone(),
         custom_text: req.custom_text.clone(),
+        internal_note: req.internal_note.clone(),
         prefix: None,
         position_x: req.pos_x,
         position_y: req.pos_y,
@@ -147,7 +185,7 @@ fn build_row1(req: &WatermarkRequest) -> String {
     .iter()
     .filter_map(|&s| s.filter(|v| !v.trim().is_empty()).map(str::to_string))
     .collect();
-    parts.join("  —  ")
+    parts.join(" - ")
 }
 
 fn build_summary(mark_id: &str, req: &WatermarkRequest) -> String {
@@ -254,6 +292,23 @@ fn add_watermark_to_page(
     append_to_page_contents(doc, page_id, watermark_ref)?;
 
     Ok(())
+}
+
+/// Encode a positive integer as an uppercase base-36 string, zero-padded to
+/// at least 5 characters.  Used for the date segment of auto-generated IDs.
+fn base36_encode(mut n: u64) -> String {
+    const DIGITS: &[u8] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    if n == 0 {
+        return "00000".to_string();
+    }
+    let mut chars = Vec::new();
+    while n > 0 {
+        chars.push(DIGITS[(n % 36) as usize] as char);
+        n /= 36;
+    }
+    chars.reverse();
+    let s: String = chars.into_iter().collect();
+    format!("{:0>5}", s)   // left-pad with zeros to minimum width 5
 }
 
 fn get_media_box(page: &lopdf::Dictionary, _doc: &Document) -> Result<(f64, f64, f64, f64)> {

@@ -1,0 +1,46 @@
+DISCLAIMER OF WARRANTY AND LIMITATION OF LIABILITY
+
+Gotcha!Mark is provided in good faith and with care, but without any warranty
+of any kind. The authors and contributors make no representations or guarantees
+— express, implied, or statutory — regarding the software's fitness for a
+particular purpose, accuracy, reliability, or freedom from defects.
+
+By using Gotcha!Mark you acknowledge that:
+
+  • You are solely responsible for how you use the software and for any
+    consequences that arise from its use.
+  • The authors and contributors shall not be held liable for any direct,
+    indirect, incidental, special, exemplary, or consequential damages
+    (including, but not limited to, loss of data, loss of business, or breach
+    of confidentiality) arising out of or in connection with the use or
+    inability to use this software, even if advised of the possibility of
+    such damages.
+  • No watermarking system — including this one — can guarantee the prevention
+    of data leaks or the identification of their source in every circumstance.
+    Gotcha!Mark is a tool to assist in forensic tracing, not a security
+    guarantee.
+
+────────────────────────────────────────────────────────────────────────────────
+
+GNU GENERAL PUBLIC LICENSE
+Version 3, 29 June 2007
+
+Copyright (C) 2026 Layer Focused
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+────────────────────────────────────────────────────────────────────────────────
+
+The full text of the GNU General Public License v3 is available at:
+https://www.gnu.org/licenses/gpl-3.0.txt
