@@ -9,6 +9,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.5] — 2026-02-23
+
+### Changed
+- **Installer and install directory renamed** — `productName` changed from `Gotcha!Mark` to `GotchaMark`. Tauri substitutes characters that are invalid in filenames (including `!`) with dots, producing `Gotcha.Mark` in installer filenames and the `AppData\Local` install path. Installers are now named `GotchaMark_0.1.5_x64-setup.exe` / `GotchaMark_0.1.5_x64_en-US.msi` and the install directory is `AppData\Local\GotchaMark`. The window title bar remains `Gotcha!Mark`.
+
+---
+
 ## [0.1.4] — 2026-02-22
 
 ### Fixed
