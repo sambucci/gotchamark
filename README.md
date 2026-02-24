@@ -28,8 +28,8 @@ macOS and Linux builds are coming. In the meantime, see [Building from source](#
 
 ## How it works
 
-1. **Watermark** — open a PDF, fill in the recipient's details, and save a personalised copy. Each copy gets a unique watermark invisible to the naked eye.
-2. **Detect** — if a copy leaks, open it in Gotcha!Mark. The app decodes the watermark and tells you exactly which copy it was.
+1. **Watermark** — open a PDF, fill in the recipient's details, and save a personalised copy. Each copy gets a unique mark printed directly on the page.
+2. **Trace** — if a copy leaks, read the watermark. The recipient name and mark ID tell you exactly which copy it was. Search the mark ID in the History tab to pull up the full record.
 3. **Registry** — every watermark you've ever issued is stored locally in a searchable log.
 
 ---
@@ -39,7 +39,7 @@ macOS and Linux builds are coming. In the meantime, see [Building from source](#
 - Invisible watermarks — unobtrusive, hard to spot or strip
 - Per-recipient fields: name, date, custom note, unique ID
 - Adjustable font, colour, opacity, and position
-- Leak detection: open any suspected copy and decode it instantly
+- Leak tracing: read the watermark on any leaked copy, look up the mark ID in History
 - Full local registry with search
 - Fully offline — no internet connection required
 - Multi-language UI: English / Italian
