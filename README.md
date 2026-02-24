@@ -36,11 +36,10 @@ macOS and Linux builds are coming. In the meantime, see [Building from source](#
 
 ## Features
 
-- Visible text watermarks — small, unobtrusive, hard to strip without damaging the document
+- Visible text watermarks — small, positioned where you choose, embedded in the PDF structure
 - Per-recipient fields: name, date, custom note, unique ID
 - Adjustable font, colour, opacity, and position
-- Searchable local registry — look up any mark ID, recipient, or date instantly
-- Full local registry with search
+- Local registry with full-text search across recipient, date, mark ID, and custom fields
 - Fully offline — no internet connection required
 - Multi-language UI: English / Italian
 
