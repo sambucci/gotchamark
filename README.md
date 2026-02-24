@@ -36,7 +36,7 @@ macOS and Linux builds are coming. In the meantime, see [Building from source](#
 
 ## Features
 
-- Invisible watermarks — unobtrusive, hard to spot or strip
+- Visible text watermarks — small, unobtrusive, hard to strip without damaging the document
 - Per-recipient fields: name, date, custom note, unique ID
 - Adjustable font, colour, opacity, and position
 - Leak tracing: read the watermark on any leaked copy, look up the mark ID in History
