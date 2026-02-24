@@ -38,7 +38,7 @@ macOS and Linux builds are coming. In the meantime, see [Building from source](#
 
 - Visible text watermarks — small, positioned where you choose, embedded in the PDF structure
 - Per-recipient fields: name, date, custom note, unique ID
-- Adjustable font, colour, opacity, and position
+- Adjustable font, colour, and position
 - Local registry with full-text search across recipient, date, mark ID, and custom fields
 - Fully offline — no internet connection required
 - Multi-language UI: English / Italian
@@ -50,8 +50,8 @@ macOS and Linux builds are coming. In the meantime, see [Building from source](#
 | | Minimum |
 |---|---|
 | **Windows** | Windows 10 (64-bit) |
-| **macOS** | macOS 11 Big Sur |
-| **Linux** | Any modern distro with WebKit2GTK |
+| **macOS** | coming soon |
+| **Linux** | coming soon |
 
 ---
 
@@ -72,8 +72,8 @@ grep -rl "gotchamark.net" /path/to/dump/
 ```
 
 ```bash
-# ExifTool — extracts the mark ID directly from XMP
-exiftool -r -GotchaMark:all /path/to/dump/
+# ExifTool — extracts XMP fields by namespace URI
+exiftool -r -xmp-gotchamark:all /path/to/dump/
 ```
 
 ```python
