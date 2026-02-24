@@ -22,7 +22,7 @@ Oh, and if you're a security researcher who routinely investigates data breaches
 
 Grab the latest Windows installer from the [Releases page](https://github.com/sambucci/gotchamark/releases).
 
-macOS and Linux builds are coming. In the meantime, see [Building from source](#building-from-source) below.
+Pre-built installers for macOS and Linux are coming. In the meantime, the source should build on both platforms via `npm run tauri build` — the codebase has no Windows-specific dependencies — but this is untested. See [Building from source](#building-from-source) below.
 
 ---
 
@@ -50,8 +50,8 @@ macOS and Linux builds are coming. In the meantime, see [Building from source](#
 | | Minimum |
 |---|---|
 | **Windows** | Windows 10 (64-bit) |
-| **macOS** | coming soon |
-| **Linux** | coming soon |
+| **macOS** | macOS 11 Big Sur (untested — build from source) |
+| **Linux** | WebKit2GTK required (untested — build from source) |
 
 ---
 
