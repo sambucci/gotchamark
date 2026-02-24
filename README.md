@@ -113,7 +113,7 @@ Gotcha!Mark is a tracing tool, not a security guarantee. Know what it can and ca
 
 **It identifies the recipient copy, not the leaker.** If the copy sent to person A ends up online, you know person A received that copy. You don't know whether A leaked it, or someone else who accessed A's device, inbox, or shared drive did. The watermark starts the chain — it doesn't close it.
 
-**It only covers what you watermark.** Documents shared before you used Gotcha!Mark, shared outside the app, or shared by someone else carry no mark. There's nothing to trace if no watermark was applied in the first place.
+**It only covers what you watermark.** (duh) Documents shared before you used Gotcha!Mark, shared outside the app, or shared by someone else carry no mark. There's nothing to trace if no watermark was applied in the first place.
 
 **The watermark is tied to your registry.** If someone else watermarked the document, or you're on a different machine without your registry, reading the mark ID off the page tells you nothing beyond what's printed on it.
 
