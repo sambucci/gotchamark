@@ -115,6 +115,8 @@ Gotcha!Mark is a tracing tool, not a security guarantee. Know what it can and ca
 
 **It only covers what you watermark.** Documents shared before you used Gotcha!Mark, shared outside the app, or shared by someone else carry no mark. There's nothing to trace if no watermark was applied in the first place.
 
+**The watermark is tied to your registry.** If someone else watermarked the document, or you're on a different machine without your registry, reading the mark ID off the page tells you nothing beyond what's printed on it.
+
 **A visible watermark can be worked around.** Someone who knows the document is marked can avoid forwarding the file digitally and instead retype, photograph, or summarise the content. The information leaks; the mark doesn't travel with it.
 
 **The registry is local and unwitnessed.** The log lives on your machine and is only as trustworthy as your machine. It is not a notarised record and cannot by itself serve as legal evidence of anything.
