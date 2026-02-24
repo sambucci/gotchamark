@@ -39,7 +39,7 @@ macOS and Linux builds are coming. In the meantime, see [Building from source](#
 - Visible text watermarks — small, unobtrusive, hard to strip without damaging the document
 - Per-recipient fields: name, date, custom note, unique ID
 - Adjustable font, colour, opacity, and position
-- Leak tracing: read the watermark on any leaked copy, look up the mark ID in History
+- Searchable local registry — look up any mark ID, recipient, or date instantly
 - Full local registry with search
 - Fully offline — no internet connection required
 - Multi-language UI: English / Italian
