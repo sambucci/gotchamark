@@ -105,6 +105,22 @@ The XMP metadata uses the namespace `https://gotchamark.net/xmp/1.0/` with two p
 
 ---
 
+## Limitations
+
+Gotcha!Mark is a tracing tool, not a security guarantee. Know what it can and cannot do before you rely on it.
+
+**The watermark can be removed.** It is visible text embedded in the PDF. A determined recipient can strip it — by cropping the area, overlaying a white rectangle, printing to paper and rescanning, or reconstructing the content without the file. The watermark is a deterrent and a paper trail, not a lock.
+
+**It identifies the recipient copy, not the leaker.** If the copy sent to person A ends up online, you know person A received that copy. You don't know whether A leaked it, or someone else who accessed A's device, inbox, or shared drive did. The watermark starts the chain — it doesn't close it.
+
+**It only covers what you watermark.** Documents shared before you used Gotcha!Mark, shared outside the app, or shared by someone else carry no mark. There's nothing to trace if no watermark was applied in the first place.
+
+**A visible watermark can be worked around.** Someone who knows the document is marked can avoid forwarding the file digitally and instead retype, photograph, or summarise the content. The information leaks; the mark doesn't travel with it.
+
+**The registry is local and unwitnessed.** The log lives on your machine and is only as trustworthy as your machine. It is not a notarised record and cannot by itself serve as legal evidence of anything.
+
+---
+
 ## Building from source
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for prerequisites and build instructions.
