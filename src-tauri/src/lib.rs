@@ -181,10 +181,26 @@ fn cmd_export_json() -> Result<String, String> {
     registry::export_json().map_err(|e| e.to_string())
 }
 
-/// Export registry as CSV string.
+/// Update the internal note for a history record.
 #[tauri::command]
-fn cmd_export_csv() -> Result<String, String> {
-    registry::export_csv().map_err(|e| e.to_string())
+fn cmd_update_note(id: String, note: Option<String>) -> Result<(), String> {
+    const MAX_NOTE: usize = 500;
+    if note.as_deref().map(|s| s.len()).unwrap_or(0) > MAX_NOTE {
+        return Err(format!("Note exceeds maximum length ({MAX_NOTE} chars)"));
+    }
+    registry::update_note(&id, note.as_deref()).map_err(|e| e.to_string())
+}
+
+/// Import records from a JSON file.
+/// Returns a JSON object: { "imported": N, "skipped": M }
+#[tauri::command]
+fn cmd_import_json(json: String) -> Result<String, String> {
+    const MAX_IMPORT_BYTES: usize = 50 * 1024 * 1024; // 50 MB guard
+    if json.len() > MAX_IMPORT_BYTES {
+        return Err("Import file too large (max 50 MB)".to_string());
+    }
+    let (imported, skipped) = registry::import_json(&json).map_err(|e| e.to_string())?;
+    Ok(format!("{{\"imported\":{},\"skipped\":{}}}", imported, skipped))
 }
 
 /// User preferences persisted between sessions.
@@ -284,7 +300,8 @@ pub fn run() {
             cmd_list_watermarks,
             cmd_search_watermarks,
             cmd_export_json,
-            cmd_export_csv,
+            cmd_update_note,
+            cmd_import_json,
             cmd_load_prefs,
             cmd_save_prefs,
         ])

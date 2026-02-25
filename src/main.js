@@ -58,7 +58,7 @@ const historyTbody  = $("history-tbody");
 const historyEmpty  = $("history-empty");
 const historyTable  = $("history-table");
 const btnExportJson = $("btn-export-json");
-const btnExportCsv  = $("btn-export-csv");
+const btnImportJson = $("btn-import-json");
 const btnRefresh    = $("btn-refresh");
 
 // ── i18n — apply translations to the DOM ───────────────────────────────────
@@ -116,6 +116,9 @@ function switchLang(code) {
   setLang(code);
   applyTranslations();
   schedulePrefs();   // persist the new language choice
+  // Re-render history so imperatively-set strings (like input placeholders)
+  // are updated for the new language.
+  loadHistory();
 }
 
 // ── Navigation ─────────────────────────────────────────────────────────────
@@ -620,17 +623,20 @@ btnApply?.addEventListener("click", async () => {
     showSuccessPopup(result.summary, outputPath);
   } catch (err) {
     const msg = String(err);
+    let errorText;
     if (msg.startsWith("ALREADY_MARKED:")) {
-      showResult("error", t("err_already_marked_apply", { id: msg.split(":")[1] }));
+      errorText = t("err_already_marked_apply", { id: msg.split(":")[1] });
     } else if (msg.startsWith("LOW_CONTRAST:")) {
       const parts = msg.split(":");
-      showResult("error", t("err_low_contrast_apply", {
+      errorText = t("err_low_contrast_apply", {
         ratio:    parseFloat(parts[1]).toFixed(1),
         fallback: parts[2],
-      }));
+      });
     } else {
-      showResult("error", `Error: ${sanitizeError(msg)}`);
+      errorText = `Error: ${sanitizeError(msg)}`;
     }
+    showResult("error", errorText);
+    showErrorPopup(errorText);
   } finally {
     btnApply.disabled    = false;
     btnApply.textContent = t("wm_apply");
@@ -667,16 +673,39 @@ function renderHistory(records) {
   historyTable.classList.remove("hidden");
   records.forEach((r) => {
     const tr = document.createElement("tr");
+    // Build the note cell as an editable input
+    const notePlaceholder = t("hist_note_placeholder");
+    const noteVal = r.internal_note || "";
     tr.innerHTML = `
       <td class="mono">${esc(r.id)}</td>
       <td>${esc(r.recipient     || dash)}</td>
       <td>${esc(r.date          || dash)}</td>
       <td>${esc(r.custom_text   || dash)}</td>
-      <td>${esc(r.internal_note || dash)}</td>
+      <td class="note-cell"><input class="note-edit" type="text" maxlength="500"
+          value="${esc(noteVal)}" placeholder="${esc(notePlaceholder)}"
+          data-id="${esc(r.id)}" data-original="${esc(noteVal)}" /></td>
       <td>${esc(r.source_name   || dash)}</td>
       <td class="source-dir" title="${esc(r.source_dir || "")}">${esc(r.source_dir || dash)}</td>
       <td>${esc((r.created_at   || dash).slice(0, 16).replace("T", " "))}</td>
     `;
+    // Wire up note editing events after the row is in the DOM
+    const input = tr.querySelector(".note-edit");
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter")  { input.blur(); }
+      if (e.key === "Escape") { input.value = input.dataset.original; input.blur(); }
+    });
+    input.addEventListener("blur", async () => {
+      const newVal = input.value.trim();
+      const oldVal = input.dataset.original;
+      if (newVal === oldVal) return;
+      try {
+        await invoke("cmd_update_note", { id: input.dataset.id, note: newVal || null });
+        input.dataset.original = newVal;
+      } catch (e) {
+        showErrorPopup(t("hist_note_save_err", { err: sanitizeError(String(e)) }));
+        input.value = oldVal;
+      }
+    });
     historyTbody.appendChild(tr);
   });
 }
@@ -709,15 +738,25 @@ btnExportJson?.addEventListener("click", async () => {
     if (path) await tauriFs().writeTextFile(path, json);
   } catch (e) { alert(t("hist_export_fail", { err: e })); }
 });
-btnExportCsv?.addEventListener("click", async () => {
+btnImportJson?.addEventListener("click", async () => {
   try {
-    const csv  = await invoke("cmd_export_csv");
-    const path = await tauriDialog().save({
-      filters: [{ name: "CSV", extensions: ["csv"] }],
-      defaultPath: "gotchamark-export.csv",
+    const selected = await tauriDialog().open({
+      filters: [{ name: "JSON", extensions: ["json"] }],
+      multiple: false,
     });
-    if (path) await tauriFs().writeTextFile(path, csv);
-  } catch (e) { alert(t("hist_export_fail", { err: e })); }
+    if (!selected) return;
+    const filePath = Array.isArray(selected) ? selected[0] : selected;
+    const json = await tauriFs().readTextFile(filePath);
+    const resultStr = await invoke("cmd_import_json", { json });
+    const result = JSON.parse(resultStr);
+    await loadHistory(searchBox?.value?.trim() || "");
+    showSuccessPopup(
+      t("hist_import_done", { imported: result.imported, skipped: result.skipped }),
+      ""
+    );
+  } catch (e) {
+    showErrorPopup(t("hist_import_fail", { err: sanitizeError(String(e)) }));
+  }
 });
 
 // ── Utilities ────────────────────────────────────────────────────────────────
@@ -741,6 +780,22 @@ function sanitizeError(msg) {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+// ── Error popup ───────────────────────────────────────────────────────────────
+const errorModal   = $("error-modal");
+const errorMessage = $("error-popup-message");
+
+function showErrorPopup(message) {
+  if (errorMessage) errorMessage.textContent = message || "";
+  errorModal?.classList.remove("hidden");
+}
+function hideErrorPopup() { errorModal?.classList.add("hidden"); }
+
+$("btn-error-close")?.addEventListener("click", hideErrorPopup);
+$("btn-error-ok")?.addEventListener("click",    hideErrorPopup);
+errorModal?.addEventListener("click", (e) => {
+  if (e.target === errorModal) hideErrorPopup();
+});
 
 // ── Success popup ─────────────────────────────────────────────────────────────
 const successModal        = $("success-modal");
@@ -771,6 +826,7 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     licenseModal.classList.add("hidden");
     hideSuccessPopup();
+    hideErrorPopup();
   }
 });
 
@@ -779,4 +835,9 @@ window.addEventListener("keydown", (e) => {
 applyTranslations();
 // 2. Load saved prefs — restores color, size, and language from last session.
 loadPrefs();
+// 3. Populate sidebar version from tauri.conf.json at runtime (single source of truth).
+window.__TAURI__.app.getVersion().then((v) => {
+  const el = $("sidebar-version");
+  if (el) el.textContent = "v" + v;
+}).catch(() => { /* non-fatal — placeholder stays */ });
 // (Mark ID is seeded when a PDF is loaded, not at startup)

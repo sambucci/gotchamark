@@ -188,48 +188,52 @@ pub fn export_json() -> Result<String> {
     Ok(serde_json::to_string_pretty(&records)?)
 }
 
-/// Export all records as a CSV string.
-pub fn export_csv() -> Result<String> {
-    let records = all()?;
-    let mut out = String::from(
-        "id,pdf_hash,source_name,source_dir,output_path,recipient,date,custom_text,internal_note,prefix,position_x,position_y,font_color,font_size,created_at\n"
-    );
-    for r in records {
-        out.push_str(&format!(
-            "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
-            csv_field(&r.id),
-            csv_field(&r.pdf_hash),
-            csv_field(&r.source_name.unwrap_or_default()),
-            csv_field(&r.source_dir.unwrap_or_default()),
-            csv_field(&r.output_path.unwrap_or_default()),
-            csv_field(&r.recipient.unwrap_or_default()),
-            csv_field(&r.date.unwrap_or_default()),
-            csv_field(&r.custom_text.unwrap_or_default()),
-            csv_field(&r.internal_note.unwrap_or_default()),
-            csv_field(&r.prefix.unwrap_or_default()),
-            r.position_x,
-            r.position_y,
-            csv_field(&r.font_color),
-            r.font_size,
-            csv_field(&r.created_at),
-        ));
+/// Update the internal note for an existing record.
+/// Returns an error if no record with the given ID exists.
+pub fn update_note(id: &str, note: Option<&str>) -> Result<()> {
+    let conn = open()?;
+    let rows = conn.execute(
+        "UPDATE watermarks SET internal_note = ?1 WHERE id = ?2",
+        params![note, id],
+    )?;
+    if rows == 0 {
+        return Err(anyhow::anyhow!("No record found with ID: {}", id));
     }
-    Ok(out)
+    Ok(())
 }
 
-fn csv_field(s: &str) -> String {
-    // Prefix formula-trigger characters so spreadsheets (Excel, LibreOffice)
-    // treat the value as a literal string rather than evaluating it as a formula.
-    let owned;
-    let s = if matches!(s.chars().next(), Some('=' | '+' | '-' | '@')) {
-        owned = format!("'{}", s);
-        owned.as_str()
-    } else {
-        s
-    };
-    if s.contains(',') || s.contains('"') || s.contains('\n') {
-        format!("\"{}\"", s.replace('"', "\"\""))
-    } else {
-        s.to_string()
+/// Import records from a JSON string (array of WatermarkRecord).
+/// Skips records whose ID already exists in the registry.
+/// Returns (imported, skipped).
+pub fn import_json(json: &str) -> Result<(usize, usize)> {
+    let records: Vec<WatermarkRecord> = serde_json::from_str(json)
+        .map_err(|e| anyhow::anyhow!("Invalid JSON: {}", e))?;
+    let conn = open()?;
+    let mut imported = 0usize;
+    let mut skipped  = 0usize;
+    for r in &records {
+        let count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM watermarks WHERE id = ?1",
+            params![r.id],
+            |row| row.get(0),
+        )?;
+        if count > 0 {
+            skipped += 1;
+            continue;
+        }
+        conn.execute(
+            "INSERT INTO watermarks
+                (id, pdf_hash, source_name, source_dir, output_path, recipient, date,
+                 custom_text, internal_note, prefix, position_x, position_y,
+                 font_color, font_size, created_at)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)",
+            params![
+                r.id, r.pdf_hash, r.source_name, r.source_dir, r.output_path,
+                r.recipient, r.date, r.custom_text, r.internal_note, r.prefix,
+                r.position_x, r.position_y, r.font_color, r.font_size, r.created_at,
+            ],
+        )?;
+        imported += 1;
     }
+    Ok((imported, skipped))
 }

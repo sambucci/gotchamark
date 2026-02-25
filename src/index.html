@@ -49,11 +49,27 @@
 
     <div id="sidebar-footer">
       <div id="sidebar-appname"><span class="logo-gotcha">Gotcha!</span><span class="logo-mark-sm">Mark</span></div>
-      <div id="sidebar-version">v0.1.3</div>
+      <div id="sidebar-version">v…</div>
       <div id="sidebar-copy">&copy; Layer Focused</div>
       <button id="btn-license" class="sidebar-link-btn" data-i18n="license_title">License</button>
     </div>
   </nav>
+
+  <!-- ── Error popup ── -->
+  <div id="error-modal" class="modal-backdrop hidden">
+    <div class="modal modal-error">
+      <div class="modal-header">
+        <span class="modal-title" data-i18n="err_popup_title">⚠ Error</span>
+        <button id="btn-error-close" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="error-popup-message" class="error-popup-message"></p>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-error-ok" class="btn-primary" data-i18n="success_popup_ok">OK</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ── Success popup ── -->
   <div id="success-modal" class="modal-backdrop hidden">
@@ -237,7 +253,7 @@
           <input type="text" id="search-box" />
           <button id="btn-refresh" class="btn-secondary" data-i18n="hist_refresh">Refresh</button>
           <button id="btn-export-json" class="btn-secondary" data-i18n="hist_export_json">Export JSON</button>
-          <button id="btn-export-csv" class="btn-secondary" data-i18n="hist_export_csv">Export CSV</button>
+          <button id="btn-import-json" class="btn-secondary" data-i18n="hist_import_json">Import JSON</button>
         </div>
       </div>
 

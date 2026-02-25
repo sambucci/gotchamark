@@ -203,6 +203,22 @@ body { display: flex; height: 100vh; overflow: hidden; }
 .modal-success {
   width: 420px;
 }
+.modal-error {
+  width: 420px;
+}
+.modal-error .modal-header {
+  background: #5a1a1a;
+  color: #fff;
+}
+.modal-error .modal-title { color: #fff; }
+.modal-error .modal-close  { background: rgba(255,255,255,.15); color: #fff; }
+.modal-error .modal-close:hover { background: rgba(255,255,255,.28); }
+.error-popup-message {
+  font-size: 14px;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .success-popup-summary {
   font-size: 14px;
   font-weight: 600;
@@ -681,6 +697,21 @@ input[type="color"] {
   white-space: nowrap;
   cursor: default;
 }
+#history-table td.note-cell { padding: 2px 6px; }
+.note-edit {
+  width: 100%;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 2px 6px;
+  box-sizing: border-box;
+  transition: border-color .15s, background .15s;
+}
+.note-edit:hover  { border-color: var(--border); background: var(--bg); }
+.note-edit:focus  { border-color: var(--accent); background: var(--surface); outline: none; }
 
 #history-empty {
   padding: 48px 40px;
