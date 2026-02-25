@@ -111,13 +111,13 @@ Gotcha!Mark is a tracing tool, not a security guarantee. Know what it can and ca
 
 **The watermark can be removed.** It is visible text embedded in the PDF. A determined recipient can strip it — by cropping the area, overlaying a white rectangle, printing to paper and rescanning, or reconstructing the content without the file. The watermark is a deterrent and a paper trail, not a lock.
 
-**It identifies the recipient copy, not the leaker.** If the copy sent to person A ends up online, you know person A received that copy. You don't know whether A leaked it, or someone else who accessed A's device, inbox, or shared drive did. The watermark starts the chain — it doesn't close it.
-
-**It only covers what you watermark.** (duh) Documents shared before you used Gotcha!Mark, shared outside the app, or shared by someone else carry no mark. There's nothing to trace if no watermark was applied in the first place.
+**It identifies the recipient copy, not the leaker.** If the copy sent to person A ends up online, you know person A received that copy. You don't know whether A leaked it, or whether someone else — an employee, a contractor, a data processor managing A's records on A's behalf — did. The watermark starts the chain — it doesn't close it, and it doesn't identify the breached party.
 
 **The watermark is tied to your registry.** If someone else watermarked the document, or you're on a different machine without your registry, reading the mark ID off the page tells you nothing beyond what's printed on it.
 
 **A visible watermark can be worked around.** Someone who knows the document is marked can avoid forwarding the file digitally and instead retype, photograph, or summarise the content. The information leaks; the mark doesn't travel with it.
+
+**The contrast check has limits.** Gotcha!Mark refuses to apply a watermark that would be invisible against the sampled background — white text on a white page, for example. But it only samples the background at the placement area on the first page. If the document has pages with different backgrounds, a watermark that's clearly visible on page 1 may become invisible on later pages. Choose a colour that works across the whole document.
 
 **The registry is local and unwitnessed.** The log lives on your machine and is only as trustworthy as your machine. It is not a notarised record and cannot by itself serve as legal evidence of anything.
 
