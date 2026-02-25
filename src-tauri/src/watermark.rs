@@ -444,14 +444,23 @@ fn append_watermark_with_restore(
     let restore_stream  = Stream::new(Dictionary::new(), restore_content.encode()?);
     let restore_ref     = doc.add_object(Object::Stream(restore_stream));
 
-    let page = doc.get_object_mut(page_id)?.as_dict_mut()?;
-    let existing = page.get(b"Contents").ok().cloned();
+    // Read the existing Contents value with a short-lived borrow so we can
+    // call doc.add_object() afterwards without a borrow conflict.
+    let existing = doc.get_object(page_id)?.as_dict()?.get(b"Contents").ok().cloned();
 
+    // Inline stream objects stored directly in the page dict are valid per spec
+    // but unusual. Promote them to indirect references so they can coexist with
+    // our q/Q/watermark streams in the Contents array.
     let original_refs: Vec<Object> = match existing {
         None => vec![],
         Some(Object::Reference(r)) => vec![Object::Reference(r)],
         Some(Object::Array(arr))   => arr,
-        _                          => vec![],
+        Some(Object::Stream(s)) => {
+            let promoted_ref = doc.add_object(Object::Stream(s));
+            vec![Object::Reference(promoted_ref)]
+        }
+        // Any other unexpected form — watermark still written, original content unknown.
+        _ => vec![],
     };
 
     // [ q, <original streams…>, Q, watermark ]
@@ -461,6 +470,7 @@ fn append_watermark_with_restore(
     new_contents.push(Object::Reference(restore_ref));
     new_contents.push(Object::Reference(watermark_ref));
 
+    let page = doc.get_object_mut(page_id)?.as_dict_mut()?;
     page.set(b"Contents", Object::Array(new_contents));
     Ok(())
 }
