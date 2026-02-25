@@ -9,6 +9,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.6] — 2026-02-25
+
+### Added
+- **Editable internal note in History** — the Internal Note column is now an inline text input. Changes are saved on blur or Enter, reverted on Escape. Limited to 500 characters.
+- **JSON import** — new "Import JSON" button in the History toolbar. Accepts a JSON file previously exported from GotchaMark. Existing records (matched by Mark ID) are skipped; the result shows how many entries were imported and how many were skipped.
+- **Error popup modal** — errors that previously appeared only as a dismissible banner now also surface as a modal dialog, consistent with the success popup introduced in v0.1.4.
+- **Dynamic version number** — the version shown in the sidebar is now read at runtime from `tauri.conf.json` via `app.getVersion()`, eliminating the need to update a hardcoded string in HTML on each release.
+
+### Changed
+- **`.gitignore` hardened** — added explicit coverage for `.env` / `.env.*` files and `.claude/` session data. `.env.example` is whitelisted.
+
+### Removed
+- **CSV export removed** — the "Export CSV" button has been removed. JSON export (added in v0.1.2) is the supported export format; JSON import is now the matching import path.
+
+### Fixed
+- **Italian placeholder staying in English** — the "Add a note…" placeholder inside the Internal Note input was set imperatively in `renderHistory()` and was not updated when switching language. Fixed by calling `loadHistory()` at the end of `switchLang()`.
+
+---
+
 ## [0.1.5] — 2026-02-23
 
 ### Changed
